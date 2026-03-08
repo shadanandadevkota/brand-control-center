@@ -1,59 +1,312 @@
-# TMF Admin Panel — Frontend Integration Guide
+# TMF Admin Panel — MERN Stack Frontend Integration Guide
 
 ## Overview
 
-This admin panel manages all content (text, images, videos) for the TMF Studios website. Content is stored in a **Lovable Cloud** database and media files in **Cloud Storage**. Your frontend reads from the same database to display live content.
+This admin panel manages all content (text, images, videos) for the TMF Studios website. The admin panel stores content in **Lovable Cloud** (PostgreSQL + Supabase Storage). Your **MERN stack frontend** can integrate in two ways:
+
+1. **Direct Read** — Your React frontend reads directly from the Supabase REST API (simplest)
+2. **Sync to MongoDB** — An Express API syncs content from Supabase → MongoDB periodically
+
+Both approaches are documented below. **Option 1 is recommended** for simplicity.
 
 ---
 
-## 🔑 Connection Details
+## 🔑 Supabase API Details
 
-### Supabase Client Setup
+Your MERN app can read content using simple HTTP requests — **no Supabase SDK needed**.
 
-Install the Supabase client in your frontend project:
+### Base URL
+
+```
+https://xbnkgnhwaxsheutgnpia.supabase.co/rest/v1
+```
+
+### API Key (Publishable — safe for frontend)
+
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhibbmtnbmh3YXhzaGV1dGducGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5ODcwNDksImV4cCI6MjA4ODU2MzA0OX0.31YYIoXaftOAsio8Qewtd4wZTM0reb347zM1Az2mcYM
+```
+
+---
+
+## Option 1: Direct REST API (Recommended)
+
+No MongoDB needed. Your React frontend fetches content with plain `fetch()` or `axios`.
+
+### Express Backend Route (Node.js)
+
+```javascript
+// server/routes/content.js
+const express = require("express");
+const axios = require("axios");
+const router = express.Router();
+
+const SUPABASE_URL = "https://xbnkgnhwaxsheutgnpia.supabase.co/rest/v1";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhibbmtnbmh3YXhzaGV1dGducGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5ODcwNDksImV4cCI6MjA4ODU2MzA0OX0.31YYIoXaftOAsio8Qewtd4wZTM0reb347zM1Az2mcYM";
+
+const supabaseHeaders = {
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+};
+
+// GET /api/content/:pageId — Fetch all sections for a page
+router.get("/:pageId", async (req, res) => {
+  try {
+    const { pageId } = req.params;
+    const response = await axios.get(
+      `${SUPABASE_URL}/page_sections?page_id=eq.${pageId}&order=sort_order.asc`,
+      { headers: supabaseHeaders }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch content" });
+  }
+});
+
+// GET /api/content/:pageId/:sectionId — Fetch a specific section
+router.get("/:pageId/:sectionId", async (req, res) => {
+  try {
+    const { pageId, sectionId } = req.params;
+    const response = await axios.get(
+      `${SUPABASE_URL}/page_sections?page_id=eq.${pageId}&section_id=eq.${sectionId}`,
+      { headers: supabaseHeaders }
+    );
+    res.json(response.data[0] || null);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch section" });
+  }
+});
+
+module.exports = router;
+```
+
+### Express Server Setup
+
+```javascript
+// server/index.js
+const express = require("express");
+const cors = require("cors");
+const contentRoutes = require("./routes/content");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.use("/api/content", contentRoutes);
+
+app.listen(5000, () => console.log("Server running on port 5000"));
+```
+
+### React Frontend Hook
+
+```jsx
+// client/src/hooks/usePageContent.js
+import { useState, useEffect } from "react";
+import axios from "axios";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+export function usePageContent(pageId) {
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      setLoading(true);
+      try {
+        const { data } = await axios.get(`${API_URL}/content/${pageId}`);
+        setSections(data);
+      } catch (error) {
+        console.error("Failed to fetch page content:", error);
+      }
+      setLoading(false);
+    };
+    fetchContent();
+  }, [pageId]);
+
+  const getSection = (sectionId) =>
+    sections.find((s) => s.section_id === sectionId);
+
+  return { sections, loading, getSection };
+}
+```
+
+### React Component Example
+
+```jsx
+// client/src/pages/HomePage.jsx
+import { usePageContent } from "../hooks/usePageContent";
+
+const HomePage = () => {
+  const { sections, loading, getSection } = usePageContent("homepage");
+
+  if (loading) return <div className="loading">Loading...</div>;
+
+  const showreel = getSection("showreel");
+  const aboutCorner1 = getSection("about-corner-1");
+  const aboutCorner2 = getSection("about-corner-2");
+  const aboutCorner3 = getSection("about-corner-3");
+  const aboutCorner4 = getSection("about-corner-4");
+
+  return (
+    <div>
+      {/* Showreel */}
+      {showreel?.media_url && (
+        <video src={showreel.media_url} autoPlay muted loop playsInline />
+      )}
+
+      {/* About Section */}
+      <div className="about-grid">
+        {[aboutCorner1, aboutCorner2, aboutCorner3, aboutCorner4].map(
+          (corner, i) =>
+            corner?.media_url && (
+              <img key={i} src={corner.media_url} alt={`About ${i + 1}`} />
+            )
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default HomePage;
+```
+
+---
+
+## Option 2: Sync to MongoDB
+
+If you prefer keeping all data in MongoDB, set up a sync job.
+
+### MongoDB Schema
+
+```javascript
+// server/models/PageSection.js
+const mongoose = require("mongoose");
+
+const pageSectionSchema = new mongoose.Schema({
+  supabase_id: { type: String, unique: true },
+  page_id: { type: String, required: true, index: true },
+  section_id: { type: String, required: true },
+  label: String,
+  content_type: {
+    type: String,
+    enum: ["text", "image", "video", "gallery", "vimeo_url"],
+  },
+  text_value: String,
+  media_url: String,
+  media_urls: [String],
+  sort_order: { type: Number, default: 0 },
+  updated_at: Date,
+});
+
+pageSectionSchema.index({ page_id: 1, section_id: 1 }, { unique: true });
+
+module.exports = mongoose.model("PageSection", pageSectionSchema);
+```
+
+### Sync Script
+
+```javascript
+// server/scripts/syncContent.js
+const axios = require("axios");
+const mongoose = require("mongoose");
+const PageSection = require("../models/PageSection");
+
+const SUPABASE_URL = "https://xbnkgnhwaxsheutgnpia.supabase.co/rest/v1";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhibbmtnbmh3YXhzaGV1dGducGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5ODcwNDksImV4cCI6MjA4ODU2MzA0OX0.31YYIoXaftOAsio8Qewtd4wZTM0reb347zM1Az2mcYM";
+
+async function syncContent() {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log("Connected to MongoDB");
+
+    const response = await axios.get(
+      `${SUPABASE_URL}/page_sections?select=*&order=sort_order.asc`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+        },
+      }
+    );
+
+    const sections = response.data;
+    console.log(`Fetched ${sections.length} sections from Supabase`);
+
+    for (const section of sections) {
+      await PageSection.findOneAndUpdate(
+        { supabase_id: section.id },
+        {
+          supabase_id: section.id,
+          page_id: section.page_id,
+          section_id: section.section_id,
+          label: section.label,
+          content_type: section.content_type,
+          text_value: section.text_value,
+          media_url: section.media_url,
+          media_urls: section.media_urls || [],
+          sort_order: section.sort_order,
+          updated_at: section.updated_at,
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    console.log("Sync complete!");
+    await mongoose.disconnect();
+  } catch (error) {
+    console.error("Sync failed:", error.message);
+  }
+}
+
+syncContent();
+```
+
+### Run Sync Periodically (cron or webhook)
 
 ```bash
-npm install @supabase/supabase-js
+# Add to package.json scripts
+"sync": "node server/scripts/syncContent.js"
+
+# Run manually
+npm run sync
+
+# Or use cron (every 5 minutes)
+*/5 * * * * cd /your-project && npm run sync
 ```
 
-Create a Supabase client file (e.g., `src/lib/supabase.ts`):
+### Express Routes for MongoDB
 
-```typescript
-import { createClient } from "@supabase/supabase-js";
+```javascript
+// server/routes/content.js (MongoDB version)
+const express = require("express");
+const PageSection = require("../models/PageSection");
+const router = express.Router();
 
-const SUPABASE_URL = "https://xbnkgnhwaxsheutgnpia.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhibbmtnbmh3YXhzaGV1dGducGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5ODcwNDksImV4cCI6MjA4ODU2MzA0OX0.31YYIoXaftOAsio8Qewtd4wZTM0reb347zM1Az2mcYM";
+router.get("/:pageId", async (req, res) => {
+  try {
+    const sections = await PageSection.find({ page_id: req.params.pageId })
+      .sort({ sort_order: 1 });
+    res.json(sections);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch content" });
+  }
+});
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+router.get("/:pageId/:sectionId", async (req, res) => {
+  try {
+    const section = await PageSection.findOne({
+      page_id: req.params.pageId,
+      section_id: req.params.sectionId,
+    });
+    res.json(section);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch section" });
+  }
+});
+
+module.exports = router;
 ```
-
-> **Note:** The anon key is a **publishable** key — safe to use in frontend code.
-
----
-
-## 📦 Database Schema
-
-### `page_sections` Table
-
-This is the main table your frontend reads from. Each row represents one editable section on a page.
-
-| Column         | Type       | Description                                      |
-| -------------- | ---------- | ------------------------------------------------ |
-| `id`           | UUID       | Primary key                                      |
-| `page_id`      | TEXT       | Which page this section belongs to                |
-| `section_id`   | TEXT       | Unique identifier for the section within the page |
-| `label`        | TEXT       | Human-readable label (for admin UI)               |
-| `content_type` | TEXT       | `text`, `image`, `video`, `gallery`, `vimeo_url`  |
-| `text_value`   | TEXT       | Text content (for `text` and `vimeo_url` types)   |
-| `media_url`    | TEXT       | Single media URL (for `image` and `video` types)  |
-| `media_urls`   | TEXT[]     | Array of URLs (for `gallery` type)                |
-| `sort_order`   | INTEGER    | Display order within the page                     |
-| `created_at`   | TIMESTAMPTZ| Creation timestamp                                |
-| `updated_at`   | TIMESTAMPTZ| Last update timestamp                             |
-
-### `media_files` Table
-
-Central media library. You typically don't query this from the frontend — use `page_sections` instead.
 
 ---
 
@@ -73,206 +326,9 @@ Central media library. You typically don't query this from the frontend — use 
 
 ---
 
-## 🔌 Frontend Integration Examples
-
-### 1. Fetch All Sections for a Page
-
-```typescript
-import { supabase } from "@/lib/supabase";
-
-async function getPageContent(pageId: string) {
-  const { data, error } = await supabase
-    .from("page_sections")
-    .select("*")
-    .eq("page_id", pageId)
-    .order("sort_order", { ascending: true });
-
-  if (error) throw error;
-  return data;
-}
-```
-
-### 2. Fetch a Specific Section
-
-```typescript
-async function getSection(pageId: string, sectionId: string) {
-  const { data, error } = await supabase
-    .from("page_sections")
-    .select("*")
-    .eq("page_id", pageId)
-    .eq("section_id", sectionId)
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-```
-
-### 3. React Hook Example
-
-```typescript
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-
-type PageSection = {
-  id: string;
-  page_id: string;
-  section_id: string;
-  label: string;
-  content_type: string;
-  text_value: string | null;
-  media_url: string | null;
-  media_urls: string[] | null;
-  sort_order: number;
-};
-
-export function usePageContent(pageId: string) {
-  const [sections, setSections] = useState<PageSection[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchContent = async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from("page_sections")
-        .select("*")
-        .eq("page_id", pageId)
-        .order("sort_order");
-
-      if (data) setSections(data);
-      setLoading(false);
-    };
-
-    fetchContent();
-  }, [pageId]);
-
-  return { sections, loading };
-}
-```
-
-### 4. Helper to Get a Section by ID
-
-```typescript
-export function useSection(pageId: string, sectionId: string) {
-  const { sections, loading } = usePageContent(pageId);
-  const section = sections.find((s) => s.section_id === sectionId);
-  return { section, loading };
-}
-```
-
----
-
-## 🏠 Homepage Integration Example
-
-```tsx
-import { usePageContent } from "@/hooks/usePageContent";
-
-const HomePage = () => {
-  const { sections, loading } = usePageContent("homepage");
-
-  if (loading) return <div>Loading...</div>;
-
-  const getSection = (id: string) => sections.find((s) => s.section_id === id);
-
-  const showreel = getSection("showreel");
-  const aboutCorner1 = getSection("about-corner-1");
-  const aboutCorner2 = getSection("about-corner-2");
-  const aboutCorner3 = getSection("about-corner-3");
-  const aboutCorner4 = getSection("about-corner-4");
-  const workAd = getSection("work-ad-commercials");
-  const workFashion = getSection("work-fashion-editorial");
-  const workWeddings = getSection("work-fine-art-weddings");
-  const workMedia = getSection("work-media-production");
-
-  return (
-    <div>
-      {/* Showreel Video */}
-      {showreel?.media_url && (
-        <video src={showreel.media_url} autoPlay muted loop />
-      )}
-
-      {/* About Section - 4 Corner Images */}
-      <div className="grid grid-cols-2">
-        {aboutCorner1?.media_url && <img src={aboutCorner1.media_url} alt="About 1" />}
-        {aboutCorner2?.media_url && <img src={aboutCorner2.media_url} alt="About 2" />}
-        {aboutCorner3?.media_url && <img src={aboutCorner3.media_url} alt="About 3" />}
-        {aboutCorner4?.media_url && <img src={aboutCorner4.media_url} alt="About 4" />}
-      </div>
-
-      {/* Work Section */}
-      <div className="grid grid-cols-2">
-        {workAd?.media_url && <img src={workAd.media_url} alt="Ad Commercials" />}
-        {workFashion?.media_url && <img src={workFashion.media_url} alt="Fashion Editorial" />}
-        {workWeddings?.media_url && <img src={workWeddings.media_url} alt="Weddings" />}
-        {workMedia?.media_url && <img src={workMedia.media_url} alt="Media Production" />}
-      </div>
-    </div>
-  );
-};
-```
-
----
-
-## 💒 Wedding Landing Page Example
-
-```tsx
-const WeddingPage = () => {
-  const { sections, loading } = usePageContent("wedding-landing");
-
-  const getSection = (id: string) => sections.find((s) => s.section_id === id);
-
-  const showreel = getSection("showreel");
-  const featuredStories = getSection("featured-stories");
-  const photography = getSection("photography");
-  const vimeo1 = getSection("vimeo-1");
-  const vimeo2 = getSection("vimeo-2");
-  const vimeo3 = getSection("vimeo-3");
-  const vimeo4 = getSection("vimeo-4");
-
-  return (
-    <div>
-      {/* Showreel */}
-      {showreel?.media_url && (
-        <video src={showreel.media_url} autoPlay muted loop />
-      )}
-
-      {/* Featured Stories Gallery */}
-      <div className="grid grid-cols-3">
-        {featuredStories?.media_urls?.map((url, i) => (
-          <img key={i} src={url} alt={`Featured ${i + 1}`} />
-        ))}
-      </div>
-
-      {/* Wedding Photography Gallery */}
-      <div className="grid grid-cols-3">
-        {photography?.media_urls?.map((url, i) => (
-          <img key={i} src={url} alt={`Photo ${i + 1}`} />
-        ))}
-      </div>
-
-      {/* Vimeo Videos */}
-      {[vimeo1, vimeo2, vimeo3, vimeo4].map((v, i) =>
-        v?.text_value ? (
-          <iframe
-            key={i}
-            src={v.text_value}
-            width="100%"
-            height="400"
-            allow="autoplay; fullscreen"
-          />
-        ) : null
-      )}
-    </div>
-  );
-};
-```
-
----
-
-## 📋 Section IDs per Page — Quick Reference
+## 📋 Section IDs per Page
 
 ### Homepage (`homepage`)
-
 | Section ID              | Type    | Description              |
 | ----------------------- | ------- | ------------------------ |
 | `showreel`              | video   | Main showreel video      |
@@ -283,7 +339,6 @@ const WeddingPage = () => {
 | `work-media-production` | image   | Work category thumbnail  |
 
 ### Media Production (`media-production`)
-
 | Section ID        | Type  | Description             |
 | ----------------- | ----- | ----------------------- |
 | `project-showcase`| video | Project showcase video  |
@@ -292,7 +347,6 @@ const WeddingPage = () => {
 | `final-trailer`   | video | Final output trailer    |
 
 ### Ad Commercials (`ad-commercials`)
-
 | Section ID           | Type  | Description        |
 | -------------------- | ----- | ------------------ |
 | `luxury-brand`       | image | Project preview    |
@@ -303,14 +357,12 @@ const WeddingPage = () => {
 | `corporate`          | image | Project preview    |
 
 ### Fashion Editorial (`fashion-editorial`)
-
 | Section ID        | Type    | Description          |
 | ----------------- | ------- | -------------------- |
 | `editorial-1`-`5` | image   | Editorial images     |
 | `showcase-images` | gallery | Showcase images 1-6  |
 
 ### Wedding Landing (`wedding-landing`)
-
 | Section ID        | Type      | Description                |
 | ----------------- | --------- | -------------------------- |
 | `showreel`        | video     | Wedding showreel           |
@@ -321,29 +373,25 @@ const WeddingPage = () => {
 | `vimeo-1` to `4`  | vimeo_url | Vimeo embed URLs           |
 
 ### About (`about`)
-
-| Section ID    | Type    | Description                         |
-| ------------- | ------- | ----------------------------------- |
-| `hero-title`  | text    | Page title                          |
-| `hero-desc`   | text    | Page description                    |
-| `about-images`| gallery | About images (same as homepage)     |
+| Section ID    | Type    | Description              |
+| ------------- | ------- | ------------------------ |
+| `hero-title`  | text    | Page title               |
+| `hero-desc`   | text    | Page description         |
+| `about-images`| gallery | About images             |
 
 ### Wedding Photos (`wedding-photos`)
-
 | Section ID  | Type    | Description    |
 | ----------- | ------- | -------------- |
 | `hero-title`| text    | Page title     |
 | `gallery`   | gallery | Photo gallery  |
 
 ### Wedding Films (`wedding-films`)
-
 | Section ID     | Type    | Description    |
 | -------------- | ------- | -------------- |
 | `hero-title`   | text    | Page title     |
 | `films-gallery`| gallery | Films gallery  |
 
 ### Wedding Stories (`wedding-stories`)
-
 | Section ID  | Type    | Description    |
 | ----------- | ------- | -------------- |
 | `hero-title`| text    | Page title     |
@@ -351,61 +399,85 @@ const WeddingPage = () => {
 
 ---
 
-## ⚡ Real-Time Updates (Optional)
+## 🚀 Quick Start (MERN)
 
-To get live updates when admin changes content:
+### 1. Install dependencies
 
-```typescript
-useEffect(() => {
-  const channel = supabase
-    .channel("page-changes")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "page_sections",
-        filter: `page_id=eq.${pageId}`,
-      },
-      () => {
-        // Refetch content when admin makes changes
-        fetchContent();
-      }
-    )
-    .subscribe();
+```bash
+# Backend
+cd server
+npm install express cors axios mongoose dotenv
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [pageId]);
+# Frontend
+cd client
+npm install axios react-router-dom
+```
+
+### 2. Environment variables
+
+```env
+# server/.env
+MONGODB_URI=mongodb+srv://your-connection-string
+PORT=5000
+```
+
+### 3. Start the app
+
+```bash
+# Terminal 1 - Backend
+cd server && npm start
+
+# Terminal 2 - Frontend
+cd client && npm start
+```
+
+### 4. Fetch content in any page
+
+```jsx
+import { usePageContent } from "../hooks/usePageContent";
+
+const AnyPage = () => {
+  const { getSection, loading } = usePageContent("PAGE_ID_HERE");
+  if (loading) return <div>Loading...</div>;
+
+  const myImage = getSection("SECTION_ID_HERE");
+  return myImage?.media_url ? <img src={myImage.media_url} /> : null;
+};
 ```
 
 ---
 
 ## 🔒 Security Notes
 
-- **Frontend uses the anon (publishable) key** — safe to expose in client code
-- **Read access is public** — anyone can read page content (intentional for a public website)
-- **Write access is admin-only** — only authenticated users with the `admin` role can modify content
-- **Storage is public** — uploaded media files are publicly accessible via URL
+- The API key used is a **publishable anon key** — safe for frontend/backend use
+- Read access is public — anyone can read page content (intentional for public website)
+- Write access is admin-only — only the admin panel can modify content
+- Media URLs are publicly accessible (hosted on Supabase Storage)
 
 ---
 
 ## 📞 Admin Panel Access
 
-- **URL:** `/admin`
+- **URL:** `[YOUR_LOVABLE_APP_URL]/admin`
 - **Email:** `tmf@themakersfactory.com`
 - **Password:** `themakersfactory`
 
 ---
 
-## 🛠 Tech Stack
+## 🛠 Architecture
 
-| Component     | Technology                    |
-| ------------- | ----------------------------- |
-| Frontend      | React + Vite + TypeScript     |
-| Styling       | Tailwind CSS + shadcn/ui      |
-| Backend       | Lovable Cloud (Supabase)      |
-| Database      | PostgreSQL                    |
-| Storage       | Supabase Storage              |
-| Auth          | Supabase Auth (email/password)|
+```
+┌─────────────────────┐         ┌──────────────────────┐
+│   TMF Admin Panel   │         │   MERN Frontend      │
+│   (Lovable App)     │         │                      │
+│                     │         │  React ← Express API │
+│  Uploads/Edits ───► │         │         │            │
+│                     │         │         ▼            │
+│         ┌───────────┤         │  Option 1: REST call │
+│         │ Supabase  │◄────────│  to Supabase API     │
+│         │ Database  │         │                      │
+│         │ + Storage │         │  Option 2: MongoDB   │
+│         └───────────┤         │  (synced from        │
+│                     │         │   Supabase)          │
+└─────────────────────┘         └──────────────────────┘
+```
