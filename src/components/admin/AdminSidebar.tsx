@@ -1,39 +1,18 @@
 import {
-  Home,
-  Info,
-  Film,
-  Camera,
-  Tv,
-  Heart,
-  Image,
-  Video,
-  BookOpen,
-  FolderOpen,
-  LayoutDashboard,
-  ChevronDown,
-  LogOut,
+  Home, Info, Film, Camera, Tv, Heart, Image, Video, BookOpen,
+  FolderOpen, LayoutDashboard, ChevronDown, LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const mainItems = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
@@ -64,15 +43,14 @@ export function AdminSidebar() {
     weddingItems.some((i) => location.pathname === i.url)
   );
 
-  const handleLogout = () => {
-    localStorage.removeItem("admin_authenticated");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate("/admin");
   };
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
       <SidebarContent className="bg-sidebar">
-        {/* Brand */}
         <div className="p-4 border-b border-border">
           {!collapsed ? (
             <div>
@@ -84,22 +62,14 @@ export function AdminSidebar() {
           )}
         </div>
 
-        {/* Main Nav */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-[10px] tracking-widest uppercase">
-            Overview
-          </SidebarGroupLabel>
+          <SidebarGroupLabel className="text-muted-foreground text-[10px] tracking-widest uppercase">Overview</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className="hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-brand-orange font-semibold"
-                    >
+                    <NavLink to={item.url} end className="hover:bg-sidebar-accent" activeClassName="bg-sidebar-accent text-brand-orange font-semibold">
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -110,22 +80,14 @@ export function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Pages */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground text-[10px] tracking-widest uppercase">
-            Pages
-          </SidebarGroupLabel>
+          <SidebarGroupLabel className="text-muted-foreground text-[10px] tracking-widest uppercase">Pages</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {pageItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className="hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-brand-orange font-semibold"
-                    >
+                    <NavLink to={item.url} end className="hover:bg-sidebar-accent" activeClassName="bg-sidebar-accent text-brand-orange font-semibold">
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -136,17 +98,12 @@ export function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Wedding */}
         <SidebarGroup>
           <Collapsible open={weddingOpen} onOpenChange={setWeddingOpen}>
             <CollapsibleTrigger className="w-full">
               <SidebarGroupLabel className="text-muted-foreground text-[10px] tracking-widest uppercase flex items-center justify-between cursor-pointer w-full">
                 Wedding
-                {!collapsed && (
-                  <ChevronDown
-                    className={`h-3 w-3 transition-transform ${weddingOpen ? "rotate-180" : ""}`}
-                  />
-                )}
+                {!collapsed && <ChevronDown className={`h-3 w-3 transition-transform ${weddingOpen ? "rotate-180" : ""}`} />}
               </SidebarGroupLabel>
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -155,12 +112,7 @@ export function AdminSidebar() {
                   {weddingItems.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          end
-                          className="hover:bg-sidebar-accent"
-                          activeClassName="bg-sidebar-accent text-brand-orange font-semibold"
-                        >
+                        <NavLink to={item.url} end className="hover:bg-sidebar-accent" activeClassName="bg-sidebar-accent text-brand-orange font-semibold">
                           <item.icon className="mr-2 h-4 w-4" />
                           {!collapsed && <span>{item.title}</span>}
                         </NavLink>
