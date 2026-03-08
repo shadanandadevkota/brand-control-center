@@ -1,11 +1,47 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
 import { Outlet, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminLayout = () => {
-  const isAuthenticated = localStorage.getItem("admin_authenticated") === "true";
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
-  if (!isAuthenticated) {
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .eq("role", "admin");
+
+      setIsAdmin(!!roles?.length);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAuth();
+    });
+
+    checkAuth();
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (isAdmin === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
     return <Navigate to="/admin" replace />;
   }
 
