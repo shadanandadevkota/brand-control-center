@@ -1,203 +1,108 @@
-# TMF Admin Panel — MERN Stack Frontend Integration Guide
+# TMF Admin Panel — MERN Stack (MongoDB Sync) Integration Guide
 
-## Overview
-
-This admin panel manages all content (text, images, videos) for the TMF Studios website. The admin panel stores content in **Lovable Cloud** (PostgreSQL + Supabase Storage). Your **MERN stack frontend** can integrate in two ways:
-
-1. **Direct Read** — Your React frontend reads directly from the Supabase REST API (simplest)
-2. **Sync to MongoDB** — An Express API syncs content from Supabase → MongoDB periodically
-
-Both approaches are documented below. **Option 1 is recommended** for simplicity.
-
----
-
-## 🔑 Supabase API Details
-
-Your MERN app can read content using simple HTTP requests — **no Supabase SDK needed**.
-
-### Base URL
+## Architecture
 
 ```
-https://xbnkgnhwaxsheutgnpia.supabase.co/rest/v1
-```
-
-### API Key (Publishable — safe for frontend)
-
-```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhibbmtnbmh3YXhzaGV1dGducGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5ODcwNDksImV4cCI6MjA4ODU2MzA0OX0.31YYIoXaftOAsio8Qewtd4wZTM0reb347zM1Az2mcYM
+┌─────────────────────┐         ┌──────────────────────────┐
+│   TMF Admin Panel   │         │   MERN Frontend          │
+│   (Lovable App)     │         │                          │
+│                     │         │  React ← Express API     │
+│  Admin uploads/     │         │              │           │
+│  edits content ───► │         │              ▼           │
+│                     │         │         MongoDB          │
+│     ┌───────────┐   │  sync   │     (synced data)       │
+│     │ Supabase  │───┼────────►│                          │
+│     │ DB + CDN  │   │         │  Cron job runs every     │
+│     └───────────┘   │         │  few minutes to sync     │
+└─────────────────────┘         └──────────────────────────┘
 ```
 
 ---
 
-## Option 1: Direct REST API (Recommended)
+## 🚀 Quick Start
 
-No MongoDB needed. Your React frontend fetches content with plain `fetch()` or `axios`.
+### 1. Project Structure
 
-### Express Backend Route (Node.js)
-
-```javascript
-// server/routes/content.js
-const express = require("express");
-const axios = require("axios");
-const router = express.Router();
-
-const SUPABASE_URL = "https://xbnkgnhwaxsheutgnpia.supabase.co/rest/v1";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhibbmtnbmh3YXhzaGV1dGducGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5ODcwNDksImV4cCI6MjA4ODU2MzA0OX0.31YYIoXaftOAsio8Qewtd4wZTM0reb347zM1Az2mcYM";
-
-const supabaseHeaders = {
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-};
-
-// GET /api/content/:pageId — Fetch all sections for a page
-router.get("/:pageId", async (req, res) => {
-  try {
-    const { pageId } = req.params;
-    const response = await axios.get(
-      `${SUPABASE_URL}/page_sections?page_id=eq.${pageId}&order=sort_order.asc`,
-      { headers: supabaseHeaders }
-    );
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch content" });
-  }
-});
-
-// GET /api/content/:pageId/:sectionId — Fetch a specific section
-router.get("/:pageId/:sectionId", async (req, res) => {
-  try {
-    const { pageId, sectionId } = req.params;
-    const response = await axios.get(
-      `${SUPABASE_URL}/page_sections?page_id=eq.${pageId}&section_id=eq.${sectionId}`,
-      { headers: supabaseHeaders }
-    );
-    res.json(response.data[0] || null);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch section" });
-  }
-});
-
-module.exports = router;
+```
+tmf-frontend/
+├── server/
+│   ├── index.js
+│   ├── .env
+│   ├── models/
+│   │   └── PageSection.js
+│   ├── routes/
+│   │   └── content.js
+│   └── scripts/
+│       └── syncContent.js
+├── client/
+│   ├── src/
+│   │   ├── hooks/
+│   │   │   └── usePageContent.js
+│   │   ├── pages/
+│   │   │   ├── HomePage.jsx
+│   │   │   ├── AboutPage.jsx
+│   │   │   ├── AdCommercialsPage.jsx
+│   │   │   ├── FashionEditorialPage.jsx
+│   │   │   ├── MediaProductionPage.jsx
+│   │   │   ├── WeddingLandingPage.jsx
+│   │   │   ├── WeddingPhotosPage.jsx
+│   │   │   ├── WeddingFilmsPage.jsx
+│   │   │   └── WeddingStoriesPage.jsx
+│   │   └── App.jsx
+│   └── package.json
+└── package.json
 ```
 
-### Express Server Setup
+### 2. Install Dependencies
 
-```javascript
-// server/index.js
-const express = require("express");
-const cors = require("cors");
-const contentRoutes = require("./routes/content");
+```bash
+# Server
+cd server
+npm init -y
+npm install express cors mongoose axios dotenv node-cron
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-app.use("/api/content", contentRoutes);
-
-app.listen(5000, () => console.log("Server running on port 5000"));
+# Client
+cd ../client
+npx create-react-app . # or use Vite
+npm install axios react-router-dom
 ```
 
-### React Frontend Hook
+### 3. Environment Variables
 
-```jsx
-// client/src/hooks/usePageContent.js
-import { useState, useEffect } from "react";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
-
-export function usePageContent(pageId) {
-  const [sections, setSections] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchContent = async () => {
-      setLoading(true);
-      try {
-        const { data } = await axios.get(`${API_URL}/content/${pageId}`);
-        setSections(data);
-      } catch (error) {
-        console.error("Failed to fetch page content:", error);
-      }
-      setLoading(false);
-    };
-    fetchContent();
-  }, [pageId]);
-
-  const getSection = (sectionId) =>
-    sections.find((s) => s.section_id === sectionId);
-
-  return { sections, loading, getSection };
-}
-```
-
-### React Component Example
-
-```jsx
-// client/src/pages/HomePage.jsx
-import { usePageContent } from "../hooks/usePageContent";
-
-const HomePage = () => {
-  const { sections, loading, getSection } = usePageContent("homepage");
-
-  if (loading) return <div className="loading">Loading...</div>;
-
-  const showreel = getSection("showreel");
-  const aboutCorner1 = getSection("about-corner-1");
-  const aboutCorner2 = getSection("about-corner-2");
-  const aboutCorner3 = getSection("about-corner-3");
-  const aboutCorner4 = getSection("about-corner-4");
-
-  return (
-    <div>
-      {/* Showreel */}
-      {showreel?.media_url && (
-        <video src={showreel.media_url} autoPlay muted loop playsInline />
-      )}
-
-      {/* About Section */}
-      <div className="about-grid">
-        {[aboutCorner1, aboutCorner2, aboutCorner3, aboutCorner4].map(
-          (corner, i) =>
-            corner?.media_url && (
-              <img key={i} src={corner.media_url} alt={`About ${i + 1}`} />
-            )
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default HomePage;
+```env
+# server/.env
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/tmf-cms
+PORT=5000
 ```
 
 ---
 
-## Option 2: Sync to MongoDB
+## 📦 Server Code
 
-If you prefer keeping all data in MongoDB, set up a sync job.
-
-### MongoDB Schema
+### MongoDB Model
 
 ```javascript
 // server/models/PageSection.js
 const mongoose = require("mongoose");
 
-const pageSectionSchema = new mongoose.Schema({
-  supabase_id: { type: String, unique: true },
-  page_id: { type: String, required: true, index: true },
-  section_id: { type: String, required: true },
-  label: String,
-  content_type: {
-    type: String,
-    enum: ["text", "image", "video", "gallery", "vimeo_url"],
+const pageSectionSchema = new mongoose.Schema(
+  {
+    supabase_id: { type: String, unique: true, required: true },
+    page_id: { type: String, required: true, index: true },
+    section_id: { type: String, required: true },
+    label: { type: String },
+    content_type: {
+      type: String,
+      enum: ["text", "image", "video", "gallery", "vimeo_url"],
+    },
+    text_value: { type: String, default: null },
+    media_url: { type: String, default: null },
+    media_urls: { type: [String], default: [] },
+    sort_order: { type: Number, default: 0 },
+    synced_at: { type: Date, default: Date.now },
   },
-  text_value: String,
-  media_url: String,
-  media_urls: [String],
-  sort_order: { type: Number, default: 0 },
-  updated_at: Date,
-});
+  { timestamps: true }
+);
 
 pageSectionSchema.index({ page_id: 1, section_id: 1 }, { unique: true });
 
@@ -209,17 +114,16 @@ module.exports = mongoose.model("PageSection", pageSectionSchema);
 ```javascript
 // server/scripts/syncContent.js
 const axios = require("axios");
-const mongoose = require("mongoose");
 const PageSection = require("../models/PageSection");
 
 const SUPABASE_URL = "https://xbnkgnhwaxsheutgnpia.supabase.co/rest/v1";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhibbmtnbmh3YXhzaGV1dGducGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5ODcwNDksImV4cCI6MjA4ODU2MzA0OX0.31YYIoXaftOAsio8Qewtd4wZTM0reb347zM1Az2mcYM";
+const SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhibbmtnbmh3YXhzaGV1dGducGlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5ODcwNDksImV4cCI6MjA4ODU2MzA0OX0.31YYIoXaftOAsio8Qewtd4wZTM0reb347zM1Az2mcYM";
 
-async function syncContent() {
+async function syncFromSupabase() {
+  console.log("[Sync] Starting sync from Supabase...");
+
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log("Connected to MongoDB");
-
     const response = await axios.get(
       `${SUPABASE_URL}/page_sections?select=*&order=sort_order.asc`,
       {
@@ -231,10 +135,13 @@ async function syncContent() {
     );
 
     const sections = response.data;
-    console.log(`Fetched ${sections.length} sections from Supabase`);
+    console.log(`[Sync] Fetched ${sections.length} sections`);
+
+    let updated = 0;
+    let created = 0;
 
     for (const section of sections) {
-      await PageSection.findOneAndUpdate(
+      const result = await PageSection.findOneAndUpdate(
         { supabase_id: section.id },
         {
           supabase_id: section.id,
@@ -246,238 +153,402 @@ async function syncContent() {
           media_url: section.media_url,
           media_urls: section.media_urls || [],
           sort_order: section.sort_order,
-          updated_at: section.updated_at,
+          synced_at: new Date(),
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
+
+      if (result.createdAt === result.updatedAt) created++;
+      else updated++;
     }
 
-    console.log("Sync complete!");
-    await mongoose.disconnect();
+    // Remove sections deleted from admin panel
+    const supabaseIds = sections.map((s) => s.id);
+    const deleteResult = await PageSection.deleteMany({
+      supabase_id: { $nin: supabaseIds },
+    });
+
+    console.log(
+      `[Sync] Complete: ${created} created, ${updated} updated, ${deleteResult.deletedCount} deleted`
+    );
   } catch (error) {
-    console.error("Sync failed:", error.message);
+    console.error("[Sync] Failed:", error.message);
   }
 }
 
-syncContent();
+module.exports = syncFromSupabase;
 ```
 
-### Run Sync Periodically (cron or webhook)
-
-```bash
-# Add to package.json scripts
-"sync": "node server/scripts/syncContent.js"
-
-# Run manually
-npm run sync
-
-# Or use cron (every 5 minutes)
-*/5 * * * * cd /your-project && npm run sync
-```
-
-### Express Routes for MongoDB
+### Express API Routes
 
 ```javascript
-// server/routes/content.js (MongoDB version)
+// server/routes/content.js
 const express = require("express");
 const PageSection = require("../models/PageSection");
 const router = express.Router();
 
+// GET /api/content/:pageId — All sections for a page
 router.get("/:pageId", async (req, res) => {
   try {
     const sections = await PageSection.find({ page_id: req.params.pageId })
-      .sort({ sort_order: 1 });
+      .sort({ sort_order: 1 })
+      .lean();
     res.json(sections);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch content" });
   }
 });
 
+// GET /api/content/:pageId/:sectionId — Single section
 router.get("/:pageId/:sectionId", async (req, res) => {
   try {
     const section = await PageSection.findOne({
       page_id: req.params.pageId,
       section_id: req.params.sectionId,
-    });
+    }).lean();
     res.json(section);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch section" });
   }
 });
 
+// POST /api/content/sync — Manually trigger sync
+router.post("/sync", async (req, res) => {
+  try {
+    const syncFromSupabase = require("../scripts/syncContent");
+    await syncFromSupabase();
+    res.json({ success: true, message: "Sync complete" });
+  } catch (error) {
+    res.status(500).json({ error: "Sync failed" });
+  }
+});
+
 module.exports = router;
+```
+
+### Express Server with Auto-Sync
+
+```javascript
+// server/index.js
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const cron = require("node-cron");
+const contentRoutes = require("./routes/content");
+const syncFromSupabase = require("./scripts/syncContent");
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.use("/api/content", contentRoutes);
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", synced: true });
+});
+
+// Connect to MongoDB & start server
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(async () => {
+    console.log("✅ Connected to MongoDB");
+
+    // Initial sync on startup
+    await syncFromSupabase();
+
+    // Auto-sync every 2 minutes
+    cron.schedule("*/2 * * * *", () => {
+      console.log("[Cron] Running scheduled sync...");
+      syncFromSupabase();
+    });
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection failed:", err.message);
+  });
 ```
 
 ---
 
-## 📄 Page IDs Reference
+## ⚛️ React Frontend
 
-| Page ID              | Page Name              |
-| -------------------- | ---------------------- |
-| `homepage`           | Homepage               |
-| `about`              | About Page             |
-| `ad-commercials`     | Ad Commercials         |
-| `fashion-editorial`  | Fashion Editorial      |
-| `media-production`   | Media Production       |
-| `wedding-landing`    | Wedding Landing Page   |
-| `wedding-photos`     | Wedding Photos         |
-| `wedding-films`      | Wedding Films          |
-| `wedding-stories`    | Wedding Stories / Blog |
+### Content Hook
+
+```javascript
+// client/src/hooks/usePageContent.js
+import { useState, useEffect } from "react";
+import axios from "axios";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+export function usePageContent(pageId) {
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchContent = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data } = await axios.get(`${API_URL}/content/${pageId}`);
+        if (!cancelled) setSections(data);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      }
+      if (!cancelled) setLoading(false);
+    };
+
+    fetchContent();
+    return () => { cancelled = true; };
+  }, [pageId]);
+
+  const getSection = (sectionId) =>
+    sections.find((s) => s.section_id === sectionId);
+
+  const getGallery = (sectionId) => {
+    const section = getSection(sectionId);
+    return section?.media_urls?.filter(Boolean) || [];
+  };
+
+  return { sections, loading, error, getSection, getGallery };
+}
+```
+
+### Homepage Example
+
+```jsx
+// client/src/pages/HomePage.jsx
+import React from "react";
+import { usePageContent } from "../hooks/usePageContent";
+
+const HomePage = () => {
+  const { loading, getSection } = usePageContent("homepage");
+
+  if (loading) return <div className="loader">Loading...</div>;
+
+  const showreel = getSection("showreel");
+
+  return (
+    <div>
+      {/* Hero Showreel */}
+      {showreel?.media_url && (
+        <section className="hero">
+          <video
+            src={showreel.media_url}
+            autoPlay muted loop playsInline
+            style={{ width: "100%", height: "100vh", objectFit: "cover" }}
+          />
+        </section>
+      )}
+
+      {/* About Section — 4 Images */}
+      <section className="about-grid">
+        {["about-corner-1", "about-corner-2", "about-corner-3", "about-corner-4"].map((id) => {
+          const s = getSection(id);
+          return s?.media_url ? (
+            <img key={id} src={s.media_url} alt={s.label} />
+          ) : null;
+        })}
+      </section>
+
+      {/* Work Categories */}
+      <section className="work-grid">
+        {["work-ad-commercials", "work-fashion-editorial", "work-fine-art-weddings", "work-media-production"].map((id) => {
+          const s = getSection(id);
+          return s?.media_url ? (
+            <div key={id} className="work-card">
+              <img src={s.media_url} alt={s.label} />
+              <h3>{s.label}</h3>
+            </div>
+          ) : null;
+        })}
+      </section>
+    </div>
+  );
+};
+
+export default HomePage;
+```
+
+### Wedding Landing Example
+
+```jsx
+// client/src/pages/WeddingLandingPage.jsx
+import React from "react";
+import { usePageContent } from "../hooks/usePageContent";
+
+const WeddingLandingPage = () => {
+  const { loading, getSection, getGallery } = usePageContent("wedding-landing");
+
+  if (loading) return <div className="loader">Loading...</div>;
+
+  const showreel = getSection("showreel");
+  const featuredPhotos = getGallery("featured-stories");
+  const weddingPhotos = getGallery("photography");
+
+  return (
+    <div>
+      {/* Showreel */}
+      {showreel?.media_url && (
+        <video src={showreel.media_url} autoPlay muted loop playsInline />
+      )}
+
+      {/* About Us Images */}
+      <section className="about-us">
+        {["about-1", "about-2"].map((id) => {
+          const s = getSection(id);
+          return s?.media_url ? <img key={id} src={s.media_url} alt={s.label} /> : null;
+        })}
+      </section>
+
+      {/* Featured Stories Gallery */}
+      <section className="gallery">
+        <h2>Featured Stories</h2>
+        <div className="gallery-grid">
+          {featuredPhotos.map((url, i) => (
+            <img key={i} src={url} alt={`Featured ${i + 1}`} />
+          ))}
+        </div>
+      </section>
+
+      {/* Wedding Photography */}
+      <section className="gallery">
+        <h2>Wedding Photography</h2>
+        <div className="gallery-grid">
+          {weddingPhotos.map((url, i) => (
+            <img key={i} src={url} alt={`Photo ${i + 1}`} />
+          ))}
+        </div>
+      </section>
+
+      {/* Vimeo Videos */}
+      <section className="vimeo-section">
+        <h2>Inspired By Cinema</h2>
+        {["vimeo-1", "vimeo-2", "vimeo-3", "vimeo-4"].map((id) => {
+          const s = getSection(id);
+          return s?.text_value ? (
+            <iframe
+              key={id}
+              src={s.text_value}
+              width="100%"
+              height="400"
+              frameBorder="0"
+              allow="autoplay; fullscreen"
+              title={s.label}
+            />
+          ) : null;
+        })}
+      </section>
+    </div>
+  );
+};
+
+export default WeddingLandingPage;
+```
 
 ---
 
-## 📋 Section IDs per Page
+## 📋 All Page IDs & Section IDs
 
 ### Homepage (`homepage`)
 | Section ID              | Type    | Description              |
 | ----------------------- | ------- | ------------------------ |
 | `showreel`              | video   | Main showreel video      |
 | `about-corner-1` to `4` | image   | About section images     |
-| `work-ad-commercials`   | image   | Work category thumbnail  |
-| `work-fashion-editorial`| image   | Work category thumbnail  |
-| `work-fine-art-weddings`| image   | Work category thumbnail  |
-| `work-media-production` | image   | Work category thumbnail  |
-
-### Media Production (`media-production`)
-| Section ID        | Type  | Description             |
-| ----------------- | ----- | ----------------------- |
-| `project-showcase`| video | Project showcase video  |
-| `still-1` to `4`  | image | Production stills       |
-| `color-graded`    | image | Color graded image      |
-| `final-trailer`   | video | Final output trailer    |
-
-### Ad Commercials (`ad-commercials`)
-| Section ID           | Type  | Description        |
-| -------------------- | ----- | ------------------ |
-| `luxury-brand`       | image | Project preview    |
-| `tech-product`       | image | Project preview    |
-| `fashion-collection` | image | Project preview    |
-| `automotive`         | image | Project preview    |
-| `lifestyle`          | image | Project preview    |
-| `corporate`          | image | Project preview    |
-
-### Fashion Editorial (`fashion-editorial`)
-| Section ID        | Type    | Description          |
-| ----------------- | ------- | -------------------- |
-| `editorial-1`-`5` | image   | Editorial images     |
-| `showcase-images` | gallery | Showcase images 1-6  |
-
-### Wedding Landing (`wedding-landing`)
-| Section ID        | Type      | Description                |
-| ----------------- | --------- | -------------------------- |
-| `showreel`        | video     | Wedding showreel           |
-| `about-1`, `about-2` | image | About us images            |
-| `featured-stories`| gallery   | 6 featured story images    |
-| `films-showreel`  | video     | Cinematic films showreel   |
-| `photography`     | gallery   | 6 photography images       |
-| `vimeo-1` to `4`  | vimeo_url | Vimeo embed URLs           |
+| `work-ad-commercials`   | image   | Work thumbnail           |
+| `work-fashion-editorial`| image   | Work thumbnail           |
+| `work-fine-art-weddings`| image   | Work thumbnail           |
+| `work-media-production` | image   | Work thumbnail           |
 
 ### About (`about`)
-| Section ID    | Type    | Description              |
-| ------------- | ------- | ------------------------ |
-| `hero-title`  | text    | Page title               |
-| `hero-desc`   | text    | Page description         |
-| `about-images`| gallery | About images             |
+| Section ID    | Type    | Description      |
+| ------------- | ------- | ---------------- |
+| `hero-title`  | text    | Page title       |
+| `hero-desc`   | text    | Description      |
+| `about-images`| gallery | About images     |
+
+### Ad Commercials (`ad-commercials`)
+| Section ID           | Type  | Description     |
+| -------------------- | ----- | --------------- |
+| `luxury-brand`       | image | Project preview |
+| `tech-product`       | image | Project preview |
+| `fashion-collection` | image | Project preview |
+| `automotive`         | image | Project preview |
+| `lifestyle`          | image | Project preview |
+| `corporate`          | image | Project preview |
+
+### Fashion Editorial (`fashion-editorial`)
+| Section ID        | Type    | Description         |
+| ----------------- | ------- | ------------------- |
+| `editorial-1`-`5` | image   | Editorial images    |
+| `showcase-images` | gallery | Showcase 1-6        |
+
+### Media Production (`media-production`)
+| Section ID        | Type  | Description            |
+| ----------------- | ----- | ---------------------- |
+| `project-showcase`| video | Showcase video         |
+| `still-1` to `4`  | image | Production stills      |
+| `color-graded`    | image | Color graded image     |
+| `final-trailer`   | video | Final trailer          |
+
+### Wedding Landing (`wedding-landing`)
+| Section ID        | Type      | Description             |
+| ----------------- | --------- | ----------------------- |
+| `showreel`        | video     | Wedding showreel        |
+| `about-1`, `about-2` | image | About images            |
+| `featured-stories`| gallery   | 6 featured images       |
+| `films-showreel`  | video     | Films showreel          |
+| `photography`     | gallery   | 6 photo images          |
+| `vimeo-1` to `4`  | vimeo_url | Vimeo URLs              |
 
 ### Wedding Photos (`wedding-photos`)
-| Section ID  | Type    | Description    |
-| ----------- | ------- | -------------- |
-| `hero-title`| text    | Page title     |
-| `gallery`   | gallery | Photo gallery  |
+| Section ID  | Type    | Description   |
+| ----------- | ------- | ------------- |
+| `hero-title`| text    | Page title    |
+| `gallery`   | gallery | Photo gallery |
 
 ### Wedding Films (`wedding-films`)
-| Section ID     | Type    | Description    |
-| -------------- | ------- | -------------- |
-| `hero-title`   | text    | Page title     |
-| `films-gallery`| gallery | Films gallery  |
+| Section ID     | Type    | Description   |
+| -------------- | ------- | ------------- |
+| `hero-title`   | text    | Page title    |
+| `films-gallery`| gallery | Films gallery |
 
 ### Wedding Stories (`wedding-stories`)
-| Section ID  | Type    | Description    |
-| ----------- | ------- | -------------- |
-| `hero-title`| text    | Page title     |
-| `stories`   | gallery | Blog posts     |
+| Section ID  | Type    | Description   |
+| ----------- | ------- | ------------- |
+| `hero-title`| text    | Page title    |
+| `stories`   | gallery | Blog posts    |
 
 ---
 
-## 🚀 Quick Start (MERN)
+## 🔒 Admin Panel Access
 
-### 1. Install dependencies
-
-```bash
-# Backend
-cd server
-npm install express cors axios mongoose dotenv
-
-# Frontend
-cd client
-npm install axios react-router-dom
-```
-
-### 2. Environment variables
-
-```env
-# server/.env
-MONGODB_URI=mongodb+srv://your-connection-string
-PORT=5000
-```
-
-### 3. Start the app
-
-```bash
-# Terminal 1 - Backend
-cd server && npm start
-
-# Terminal 2 - Frontend
-cd client && npm start
-```
-
-### 4. Fetch content in any page
-
-```jsx
-import { usePageContent } from "../hooks/usePageContent";
-
-const AnyPage = () => {
-  const { getSection, loading } = usePageContent("PAGE_ID_HERE");
-  if (loading) return <div>Loading...</div>;
-
-  const myImage = getSection("SECTION_ID_HERE");
-  return myImage?.media_url ? <img src={myImage.media_url} /> : null;
-};
-```
+| Field    | Value                        |
+| -------- | ---------------------------- |
+| URL      | `[LOVABLE_APP_URL]/admin`    |
+| Email    | `tmf@themakersfactory.com`   |
+| Password | `themakersfactory`           |
 
 ---
 
-## 🔒 Security Notes
+## 📌 Important Notes
 
-- The API key used is a **publishable anon key** — safe for frontend/backend use
-- Read access is public — anyone can read page content (intentional for public website)
-- Write access is admin-only — only the admin panel can modify content
-- Media URLs are publicly accessible (hosted on Supabase Storage)
+1. **Media URLs are hosted on Supabase CDN** — images/videos uploaded via admin panel are served from `https://xbnkgnhwaxsheutgnpia.supabase.co/storage/v1/object/public/media/...`. Your MERN frontend just uses these URLs directly in `<img>` and `<video>` tags.
 
----
+2. **Sync frequency** — The cron runs every 2 minutes. You can change `*/2 * * * *` to `*/5 * * * *` (5 min) or `*/1 * * * *` (1 min) depending on how fast you need changes to reflect.
 
-## 📞 Admin Panel Access
+3. **Manual sync** — Hit `POST /api/content/sync` to trigger an immediate sync after making admin changes.
 
-- **URL:** `[YOUR_LOVABLE_APP_URL]/admin`
-- **Email:** `tmf@themakersfactory.com`
-- **Password:** `themakersfactory`
-
----
-
-## 🛠 Architecture
-
-```
-┌─────────────────────┐         ┌──────────────────────┐
-│   TMF Admin Panel   │         │   MERN Frontend      │
-│   (Lovable App)     │         │                      │
-│                     │         │  React ← Express API │
-│  Uploads/Edits ───► │         │         │            │
-│                     │         │         ▼            │
-│         ┌───────────┤         │  Option 1: REST call │
-│         │ Supabase  │◄────────│  to Supabase API     │
-│         │ Database  │         │                      │
-│         │ + Storage │         │  Option 2: MongoDB   │
-│         └───────────┤         │  (synced from        │
-│                     │         │   Supabase)          │
-└─────────────────────┘         └──────────────────────┘
-```
+4. **No media duplication** — MongoDB stores only the URLs pointing to Supabase Storage. Actual files stay on Supabase CDN. No need to download/re-host files.
