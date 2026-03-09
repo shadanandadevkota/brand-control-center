@@ -1,13 +1,11 @@
 import { useParams } from "react-router-dom";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Save, Plus, Upload, GripVertical, Trash2, Image, Film } from "lucide-react";
+import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import SectionCard from "@/components/admin/SectionCard";
+import AddSectionDialog from "@/components/admin/AddSectionDialog";
 
 type Section = {
   id: string;
@@ -37,7 +35,6 @@ const PageEditor = () => {
   const { pageId } = useParams<{ pageId: string }>();
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingSection, setUploadingSection] = useState<string | null>(null);
   const meta = pageTitles[pageId || ""] || { title: "Page", description: "" };
 
@@ -52,12 +49,11 @@ const PageEditor = () => {
       .select("*")
       .eq("page_id", pageId || "")
       .order("sort_order");
-
     if (!error && data) setSections(data as Section[]);
     setLoading(false);
   };
 
-  const handleTextUpdate = async (sectionId: string, value: string) => {
+  const handleTextUpdate = (sectionId: string, value: string) => {
     setSections((prev) =>
       prev.map((s) => (s.id === sectionId ? { ...s, text_value: value } : s))
     );
@@ -91,12 +87,10 @@ const PageEditor = () => {
       const { error: uploadError } = await supabase.storage
         .from("media")
         .upload(path, file, { upsert: true });
-
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(path);
 
-      // Also add to media_files table
       const fileType = file.type.startsWith("video") ? "video" : "image";
       await supabase.from("media_files").insert({
         file_name: file.name,
@@ -107,7 +101,6 @@ const PageEditor = () => {
         storage_url: publicUrl,
       });
 
-      // Update section
       if (galleryIndex !== undefined) {
         setSections((prev) =>
           prev.map((s) => {
@@ -124,12 +117,48 @@ const PageEditor = () => {
           prev.map((s) => (s.id === sectionId ? { ...s, media_url: publicUrl } : s))
         );
       }
-
       toast.success("File uploaded successfully");
     } catch (error: any) {
       toast.error(error.message || "Upload failed");
     } finally {
       setUploadingSection(null);
+    }
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    try {
+      const { error } = await supabase.from("page_sections").delete().eq("id", sectionId);
+      if (error) throw error;
+      setSections((prev) => prev.filter((s) => s.id !== sectionId));
+      toast.success("Section deleted");
+    } catch {
+      toast.error("Failed to delete section");
+    }
+  };
+
+  const handleAddSection = async (label: string, contentType: string) => {
+    try {
+      const sectionId = label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      const maxOrder = sections.length > 0 ? Math.max(...sections.map((s) => s.sort_order)) : 0;
+
+      const { data, error } = await supabase
+        .from("page_sections")
+        .insert({
+          page_id: pageId || "",
+          section_id: sectionId,
+          label,
+          content_type: contentType,
+          sort_order: maxOrder + 1,
+          media_urls: contentType === "gallery" ? [] : null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (data) setSections((prev) => [...prev, data as Section]);
+      toast.success(`"${label}" section added`);
+    } catch {
+      toast.error("Failed to add section");
     }
   };
 
@@ -157,6 +186,12 @@ const PageEditor = () => {
     );
   };
 
+  const clearMedia = (sectionId: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === sectionId ? { ...s, media_url: null } : s))
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -177,165 +212,23 @@ const PageEditor = () => {
         </Button>
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,video/mp4"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file && uploadingSection) {
-            handleFileUpload(uploadingSection, file);
-          }
-          e.target.value = "";
-        }}
-      />
-
       <div className="space-y-4">
         {sections.map((section) => (
-          <Card key={section.id} className="bg-card border-border p-5">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 cursor-grab text-muted-foreground hover:text-foreground">
-                <GripVertical className="h-5 w-5" />
-              </div>
-              <div className="flex-1 space-y-3">
-                <Label className="text-foreground font-semibold text-sm">{section.label}</Label>
-
-                {section.content_type === "text" && (
-                  <Input
-                    value={section.text_value || ""}
-                    onChange={(e) => handleTextUpdate(section.id, e.target.value)}
-                    placeholder={`Enter ${section.label.toLowerCase()}...`}
-                    className="bg-muted border-border text-foreground"
-                  />
-                )}
-
-                {section.content_type === "vimeo_url" && (
-                  <Input
-                    value={section.text_value || ""}
-                    onChange={(e) => handleTextUpdate(section.id, e.target.value)}
-                    placeholder="https://vimeo.com/..."
-                    className="bg-muted border-border text-foreground"
-                  />
-                )}
-
-                {section.content_type === "image" && (
-                  <div className="flex items-center gap-4">
-                    <div className="w-24 h-24 bg-muted rounded-lg border border-border flex items-center justify-center overflow-hidden">
-                      {section.media_url ? (
-                        <img src={section.media_url} alt={section.label} className="w-full h-full object-cover" />
-                      ) : (
-                        <Image className="h-8 w-8 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        {section.media_url ? section.media_url.split("/").pop() : "No file selected"}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-border"
-                        disabled={uploadingSection === section.id}
-                        onClick={() => {
-                          setUploadingSection(section.id);
-                          fileInputRef.current?.click();
-                        }}
-                      >
-                        <Upload className="mr-2 h-3 w-3" />
-                        {uploadingSection === section.id ? "Uploading..." : "Replace Image"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {section.content_type === "video" && (
-                  <div className="flex items-center gap-4">
-                    <div className="w-32 h-20 bg-muted rounded-lg border border-border flex items-center justify-center overflow-hidden">
-                      {section.media_url ? (
-                        <video src={section.media_url} className="w-full h-full object-cover" />
-                      ) : (
-                        <Film className="h-8 w-8 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        {section.media_url ? section.media_url.split("/").pop() : "No video selected"}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-border"
-                        disabled={uploadingSection === section.id}
-                        onClick={() => {
-                          setUploadingSection(section.id);
-                          fileInputRef.current?.click();
-                        }}
-                      >
-                        <Upload className="mr-2 h-3 w-3" />
-                        {uploadingSection === section.id ? "Uploading..." : "Replace Video"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {section.content_type === "gallery" && (
-                  <div>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                      {(section.media_urls || []).map((url, i) => (
-                        <div key={i} className="aspect-square bg-muted rounded-lg border border-border relative group overflow-hidden">
-                          {url ? (
-                            <img src={url} alt={`Gallery ${i + 1}`} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Image className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-foreground hover:text-primary h-7 w-7"
-                              onClick={() => {
-                                setUploadingSection(section.id);
-                                const input = document.createElement("input");
-                                input.type = "file";
-                                input.accept = "image/*";
-                                input.onchange = (e) => {
-                                  const file = (e.target as HTMLInputElement).files?.[0];
-                                  if (file) handleFileUpload(section.id, file, i);
-                                };
-                                input.click();
-                              }}
-                            >
-                              <Upload className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-foreground hover:text-destructive h-7 w-7"
-                              onClick={() => removeGalleryItem(section.id, i)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => addGalleryItem(section.id)}
-                        className="aspect-square bg-muted/50 rounded-lg border-2 border-dashed border-border hover:border-primary transition-colors flex flex-col items-center justify-center text-muted-foreground hover:text-primary"
-                      >
-                        <Plus className="h-6 w-6" />
-                        <span className="text-[10px] mt-1">Add</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
+          <SectionCard
+            key={section.id}
+            section={section}
+            uploadingSection={uploadingSection}
+            onTextUpdate={handleTextUpdate}
+            onFileUpload={handleFileUpload}
+            onDelete={handleDeleteSection}
+            onAddGalleryItem={addGalleryItem}
+            onRemoveGalleryItem={removeGalleryItem}
+            onClearMedia={clearMedia}
+          />
         ))}
       </div>
+
+      <AddSectionDialog onAdd={handleAddSection} />
     </div>
   );
 };
