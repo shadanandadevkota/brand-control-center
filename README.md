@@ -240,7 +240,6 @@ export const usePageContent = (pageId) => {
 - **Read** is public — no auth needed to fetch content.
 - **Create/Update/Delete** requires admin authentication.
 - Media files are served from a public CDN bucket.
-┌─────────────────────┐         ┌──────────────────────────┐
 │   TMF Admin Panel   │         │   MERN Frontend          │
 │   (Lovable App)     │         │                          │
 │                     │         │  React ← Express API     │
