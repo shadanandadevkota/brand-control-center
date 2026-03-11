@@ -192,6 +192,25 @@ const PageEditor = () => {
     );
   };
 
+  const setMediaUrl = (sectionId: string, url: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === sectionId ? { ...s, media_url: url } : s))
+    );
+  };
+
+  const setGalleryUrl = (sectionId: string, index: number, url: string) => {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id === sectionId) {
+          const urls = [...(s.media_urls || [])];
+          urls[index] = url;
+          return { ...s, media_urls: urls };
+        }
+        return s;
+      })
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -224,6 +243,8 @@ const PageEditor = () => {
             onAddGalleryItem={addGalleryItem}
             onRemoveGalleryItem={removeGalleryItem}
             onClearMedia={clearMedia}
+            onSetMediaUrl={setMediaUrl}
+            onSetGalleryUrl={setGalleryUrl}
           />
         ))}
       </div>
