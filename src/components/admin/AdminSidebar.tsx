@@ -1,6 +1,6 @@
 import {
   Home, Info, Film, Camera, Tv, Heart, Image, Video, BookOpen,
-  FolderOpen, LayoutDashboard, ChevronDown, LogOut,
+  FolderOpen, LayoutDashboard, ChevronDown, LogOut, Users, FileText,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -32,6 +32,8 @@ const weddingItems = [
   { title: "Wedding Photos", url: "/admin/pages/wedding-photos", icon: Image },
   { title: "Wedding Films", url: "/admin/pages/wedding-films", icon: Video },
   { title: "Wedding Stories", url: "/admin/pages/wedding-stories", icon: BookOpen },
+  { title: "Wedding Projects", url: "/admin/wedding-projects", icon: Users },
+  { title: "Blog Posts", url: "/admin/wedding-blog", icon: FileText },
 ];
 
 export function AdminSidebar() {
