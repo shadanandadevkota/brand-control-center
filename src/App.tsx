@@ -10,6 +10,8 @@ import AdminLayout from "./components/admin/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import MediaLibrary from "./pages/admin/MediaLibrary";
 import PageEditor from "./pages/admin/PageEditor";
+import WeddingProjects from "./pages/admin/WeddingProjects";
+import WeddingBlogPosts from "./pages/admin/WeddingBlogPosts";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,8 @@ const App = () => (
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="media" element={<MediaLibrary />} />
             <Route path="pages/:pageId" element={<PageEditor />} />
+            <Route path="wedding-projects" element={<WeddingProjects />} />
+            <Route path="wedding-blog" element={<WeddingBlogPosts />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

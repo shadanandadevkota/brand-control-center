@@ -32,6 +32,8 @@ const weddingItems = [
   { title: "Wedding Photos", url: "/admin/pages/wedding-photos", icon: Image },
   { title: "Wedding Films", url: "/admin/pages/wedding-films", icon: Video },
   { title: "Wedding Stories", url: "/admin/pages/wedding-stories", icon: BookOpen },
+  { title: "Wedding Projects", url: "/admin/wedding-projects", icon: Users },
+  { title: "Blog Posts", url: "/admin/wedding-blog", icon: FileText },
 ];
 
 export function AdminSidebar() {
