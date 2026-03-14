@@ -113,6 +113,123 @@ export type Database = {
         }
         Relationships: []
       }
+      wedding_blog_posts: {
+        Row: {
+          author: string | null
+          content: Json | null
+          couple_name: string
+          cover_image: string | null
+          created_at: string
+          date_text: string | null
+          id: string
+          read_time: string | null
+          slug: string
+          sort_order: number | null
+          subtitle: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          content?: Json | null
+          couple_name: string
+          cover_image?: string | null
+          created_at?: string
+          date_text?: string | null
+          id?: string
+          read_time?: string | null
+          slug: string
+          sort_order?: number | null
+          subtitle?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          content?: Json | null
+          couple_name?: string
+          cover_image?: string | null
+          created_at?: string
+          date_text?: string | null
+          id?: string
+          read_time?: string | null
+          slug?: string
+          sort_order?: number | null
+          subtitle?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      wedding_projects: {
+        Row: {
+          behind_the_scenes: string | null
+          category: string
+          couple_name: string
+          cover_image: string | null
+          created_at: string
+          date_text: string | null
+          description: string
+          duration: string | null
+          has_blog: boolean | null
+          id: string
+          images: string[] | null
+          location: string
+          project_type: string
+          slug: string
+          sort_order: number | null
+          tagline: string | null
+          thumbnail: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          behind_the_scenes?: string | null
+          category?: string
+          couple_name: string
+          cover_image?: string | null
+          created_at?: string
+          date_text?: string | null
+          description?: string
+          duration?: string | null
+          has_blog?: boolean | null
+          id?: string
+          images?: string[] | null
+          location: string
+          project_type?: string
+          slug: string
+          sort_order?: number | null
+          tagline?: string | null
+          thumbnail?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          behind_the_scenes?: string | null
+          category?: string
+          couple_name?: string
+          cover_image?: string | null
+          created_at?: string
+          date_text?: string | null
+          description?: string
+          duration?: string | null
+          has_blog?: boolean | null
+          id?: string
+          images?: string[] | null
+          location?: string
+          project_type?: string
+          slug?: string
+          sort_order?: number | null
+          tagline?: string | null
+          thumbnail?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
