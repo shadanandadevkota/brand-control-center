@@ -16,7 +16,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const mainItems = [
   { title: "Dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
-  { title: "Media Library", url: "/admin/media", icon: FolderOpen },
 ];
 
 const pageItems = [

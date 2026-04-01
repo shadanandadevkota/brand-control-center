@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GripVertical, Trash2, Upload, Image, Film, Plus, X, Link2, FileUp } from "lucide-react";
+import { GripVertical, Trash2, Upload, Image, Film, Plus, X, Link2, FileUp, EyeOff, Eye } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +26,8 @@ type Section = {
   media_url: string | null;
   media_urls: string[] | null;
   sort_order: number;
+  is_default?: boolean;
+  hidden?: boolean;
 };
 
 type SectionCardProps = {
@@ -39,6 +41,7 @@ type SectionCardProps = {
   onClearMedia: (sectionId: string) => void;
   onSetMediaUrl?: (sectionId: string, url: string) => void;
   onSetGalleryUrl?: (sectionId: string, index: number, url: string) => void;
+  onToggleHide?: (sectionId: string, hidden: boolean) => void;
 };
 
 type InputMode = "file" | "link";
@@ -54,11 +57,15 @@ const SectionCard = ({
   onClearMedia,
   onSetMediaUrl,
   onSetGalleryUrl,
+  onToggleHide,
 }: SectionCardProps) => {
   const [inputMode, setInputMode] = useState<InputMode>("file");
   const [linkUrl, setLinkUrl] = useState("");
   const [galleryLinkIndex, setGalleryLinkIndex] = useState<number | null>(null);
   const [galleryLinkUrl, setGalleryLinkUrl] = useState("");
+
+  const isDefault = section.is_default === true;
+  const isHidden = section.hidden === true;
 
   const triggerFileUpload = (accept: string, callback: (file: File) => void) => {
     const input = document.createElement("input");
@@ -106,38 +113,59 @@ const SectionCard = ({
   );
 
   return (
-    <Card className="bg-card border-border p-5">
+    <Card className={`bg-card border-border p-5 ${isHidden ? "opacity-50" : ""}`}>
       <div className="flex items-start gap-3">
         <div className="mt-1 cursor-grab text-muted-foreground hover:text-foreground">
           <GripVertical className="h-5 w-5" />
         </div>
         <div className="flex-1 space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-foreground font-semibold text-sm">{section.label}</Label>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
+            <div className="flex items-center gap-2">
+              <Label className="text-foreground font-semibold text-sm">{section.label}</Label>
+              {isHidden && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Hidden</span>}
+              {isDefault && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">Default</span>}
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Hide/Show toggle for default sections */}
+              {isDefault && onToggleHide && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={() => onToggleHide(section.id, !isHidden)}
+                  title={isHidden ? "Show section" : "Hide section"}
+                >
+                  {isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-card border-border">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="text-foreground">Delete Section</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{section.label}"? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onDelete(section.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              )}
+              {/* Delete only for non-default (added) sections */}
+              {!isDefault && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-card border-border">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-foreground">Delete Section</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{section.label}"? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => onDelete(section.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
 
           {section.content_type === "text" && (
