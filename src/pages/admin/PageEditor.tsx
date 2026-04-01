@@ -17,6 +17,7 @@ type Section = {
   media_url: string | null;
   media_urls: string[] | null;
   sort_order: number;
+  subtitle: string | null;
   is_default?: boolean;
   hidden?: boolean;
 };
