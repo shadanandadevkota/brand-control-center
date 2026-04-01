@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Image, Film, Type, Link, Images } from "lucide-react";
+import { Plus, Image, Film, Type, Link, Images, FileVideo } from "lucide-react";
 
 type AddSectionDialogProps = {
   onAdd: (label: string, contentType: string) => void;
@@ -27,7 +27,8 @@ type AddSectionDialogProps = {
 const contentTypes = [
   { value: "image", label: "Photo", icon: Image, description: "Single image upload" },
   { value: "video", label: "Video", icon: Film, description: "Single video upload" },
-  { value: "gallery", label: "Photo Gallery", icon: Images, description: "Multiple images" },
+  { value: "media", label: "Photo / Video", icon: FileVideo, description: "Single photo or video (up to 50MB)" },
+  { value: "gallery", label: "Media Gallery", icon: Images, description: "Multiple photos & videos (up to 50MB each)" },
   { value: "text", label: "Text", icon: Type, description: "Text content" },
   { value: "vimeo_url", label: "Vimeo URL", icon: Link, description: "Vimeo video link" },
 ];
