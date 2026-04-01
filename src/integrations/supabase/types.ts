@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      blog_posts: {
+        Row: {
+          author: string | null
+          category: string | null
+          content: string | null
+          cover_image: string | null
+          created_at: string | null
+          excerpt: string | null
+          id: string
+          published: boolean | null
+          published_at: string | null
+          slug: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author?: string | null
+          category?: string | null
+          content?: string | null
+          cover_image?: string | null
+          created_at?: string | null
+          excerpt?: string | null
+          id?: string
+          published?: boolean | null
+          published_at?: string | null
+          slug: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author?: string | null
+          category?: string | null
+          content?: string | null
+          cover_image?: string | null
+          created_at?: string | null
+          excerpt?: string | null
+          id?: string
+          published?: boolean | null
+          published_at?: string | null
+          slug?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       media_files: {
         Row: {
           created_at: string
@@ -64,6 +112,7 @@ export type Database = {
           page_id: string
           section_id: string
           sort_order: number
+          subtitle: string | null
           text_value: string | null
           updated_at: string
         }
@@ -77,6 +126,7 @@ export type Database = {
           page_id: string
           section_id: string
           sort_order?: number
+          subtitle?: string | null
           text_value?: string | null
           updated_at?: string
         }
@@ -90,6 +140,7 @@ export type Database = {
           page_id?: string
           section_id?: string
           sort_order?: number
+          subtitle?: string | null
           text_value?: string | null
           updated_at?: string
         }
@@ -118,49 +169,130 @@ export type Database = {
           author: string | null
           content: Json | null
           couple_name: string
+          couple_names: string | null
           cover_image: string | null
           created_at: string
           date_text: string | null
+          excerpt: string | null
+          gallery_images: string[] | null
           id: string
+          location: string | null
+          photographer: string | null
+          published: boolean | null
           read_time: string | null
           slug: string
           sort_order: number | null
+          story_content: string | null
           subtitle: string | null
           tags: string[] | null
           title: string
           updated_at: string
+          wedding_date: string | null
         }
         Insert: {
           author?: string | null
           content?: Json | null
           couple_name: string
+          couple_names?: string | null
           cover_image?: string | null
           created_at?: string
           date_text?: string | null
+          excerpt?: string | null
+          gallery_images?: string[] | null
           id?: string
+          location?: string | null
+          photographer?: string | null
+          published?: boolean | null
           read_time?: string | null
           slug: string
           sort_order?: number | null
+          story_content?: string | null
           subtitle?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string
+          wedding_date?: string | null
         }
         Update: {
           author?: string | null
           content?: Json | null
           couple_name?: string
+          couple_names?: string | null
           cover_image?: string | null
           created_at?: string
           date_text?: string | null
+          excerpt?: string | null
+          gallery_images?: string[] | null
           id?: string
+          location?: string | null
+          photographer?: string | null
+          published?: boolean | null
           read_time?: string | null
           slug?: string
           sort_order?: number | null
+          story_content?: string | null
           subtitle?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string
+          wedding_date?: string | null
+        }
+        Relationships: []
+      }
+      wedding_posts: {
+        Row: {
+          category: string | null
+          content: string | null
+          cover_path: string | null
+          cover_url: string | null
+          created_at: string | null
+          id: string
+          meta_description: string | null
+          meta_title: string | null
+          page_id: string
+          published_at: string | null
+          slug: string
+          status: string | null
+          subtitle: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          content?: string | null
+          cover_path?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          page_id: string
+          published_at?: string | null
+          slug: string
+          status?: string | null
+          subtitle?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          content?: string | null
+          cover_path?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          page_id?: string
+          published_at?: string | null
+          slug?: string
+          status?: string | null
+          subtitle?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
