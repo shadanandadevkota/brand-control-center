@@ -106,6 +106,7 @@ export type Database = {
           content_type: string
           created_at: string
           id: string
+          is_default: boolean
           label: string
           media_url: string | null
           media_urls: string[] | null
@@ -120,6 +121,7 @@ export type Database = {
           content_type: string
           created_at?: string
           id?: string
+          is_default?: boolean
           label: string
           media_url?: string | null
           media_urls?: string[] | null
@@ -134,6 +136,7 @@ export type Database = {
           content_type?: string
           created_at?: string
           id?: string
+          is_default?: boolean
           label?: string
           media_url?: string | null
           media_urls?: string[] | null
