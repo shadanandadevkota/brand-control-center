@@ -17,6 +17,9 @@ type Section = {
   media_url: string | null;
   media_urls: string[] | null;
   sort_order: number;
+  subtitle: string | null;
+  is_default?: boolean;
+  hidden?: boolean;
 };
 
 const pageTitles: Record<string, { title: string; description: string }> = {
@@ -78,6 +81,22 @@ const PageEditor = () => {
     }
   };
 
+  const deleteStorageFile = async (url: string) => {
+    try {
+      const mediaBase = "/storage/v1/object/public/media/";
+      const idx = url.indexOf(mediaBase);
+      if (idx === -1) return;
+      const filePath = url.substring(idx + mediaBase.length);
+      if (filePath) {
+        await supabase.storage.from("media").remove([filePath]);
+        // Also remove from media_files table
+        await supabase.from("media_files").delete().eq("file_path", filePath);
+      }
+    } catch {
+      // Silent fail - file may not exist in storage
+    }
+  };
+
   const handleFileUpload = async (sectionId: string, file: File, galleryIndex?: number) => {
     setUploadingSection(sectionId);
     try {
@@ -106,6 +125,8 @@ const PageEditor = () => {
           prev.map((s) => {
             if (s.id === sectionId) {
               const urls = [...(s.media_urls || [])];
+              // Delete old file from storage if replacing
+              if (urls[galleryIndex]) deleteStorageFile(urls[galleryIndex]);
               urls[galleryIndex] = publicUrl;
               return { ...s, media_urls: urls };
             }
@@ -113,6 +134,9 @@ const PageEditor = () => {
           })
         );
       } else {
+        // Delete old file from storage if replacing
+        const oldSection = sections.find(s => s.id === sectionId);
+        if (oldSection?.media_url) deleteStorageFile(oldSection.media_url);
         setSections((prev) =>
           prev.map((s) => (s.id === sectionId ? { ...s, media_url: publicUrl } : s))
         );
@@ -127,12 +151,41 @@ const PageEditor = () => {
 
   const handleDeleteSection = async (sectionId: string) => {
     try {
+      const section = sections.find(s => s.id === sectionId);
+      // Delete associated media from storage
+      if (section?.media_url) await deleteStorageFile(section.media_url);
+      if (section?.media_urls) {
+        for (const url of section.media_urls) {
+          if (url) await deleteStorageFile(url);
+        }
+      }
+
       const { error } = await supabase.from("page_sections").delete().eq("id", sectionId);
       if (error) throw error;
       setSections((prev) => prev.filter((s) => s.id !== sectionId));
       toast.success("Section deleted");
     } catch {
       toast.error("Failed to delete section");
+    }
+  };
+
+  const handleToggleHide = async (sectionId: string, hidden: boolean) => {
+    try {
+      // Use text_value prefix to mark hidden state (workaround without schema change)
+      // Actually we'll save it via a subtitle field hack or separate approach
+      // Better: update the section's sort_order to negative to "hide"
+      // Simplest: store hidden state locally and persist via a convention
+      const { error } = await supabase
+        .from("page_sections")
+        .update({ subtitle: hidden ? "__hidden__" : null })
+        .eq("id", sectionId);
+      if (error) throw error;
+      setSections((prev) =>
+        prev.map((s) => (s.id === sectionId ? { ...s, hidden } : s))
+      );
+      toast.success(hidden ? "Section hidden" : "Section visible");
+    } catch {
+      toast.error("Failed to update section");
     }
   };
 
@@ -150,6 +203,7 @@ const PageEditor = () => {
           content_type: contentType,
           sort_order: maxOrder + 1,
           media_urls: contentType === "gallery" ? [] : null,
+          is_default: false,
         })
         .select()
         .single();
@@ -173,7 +227,11 @@ const PageEditor = () => {
     );
   };
 
-  const removeGalleryItem = (sectionId: string, index: number) => {
+  const removeGalleryItem = async (sectionId: string, index: number) => {
+    const section = sections.find(s => s.id === sectionId);
+    const url = section?.media_urls?.[index];
+    if (url) await deleteStorageFile(url);
+
     setSections((prev) =>
       prev.map((s) => {
         if (s.id === sectionId) {
@@ -186,7 +244,9 @@ const PageEditor = () => {
     );
   };
 
-  const clearMedia = (sectionId: string) => {
+  const clearMedia = async (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (section?.media_url) await deleteStorageFile(section.media_url);
     setSections((prev) =>
       prev.map((s) => (s.id === sectionId ? { ...s, media_url: null } : s))
     );
@@ -211,6 +271,12 @@ const PageEditor = () => {
     );
   };
 
+  // Map subtitle "__hidden__" to hidden flag
+  const mappedSections = sections.map(s => ({
+    ...s,
+    hidden: s.subtitle === "__hidden__",
+  }));
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -232,7 +298,7 @@ const PageEditor = () => {
       </div>
 
       <div className="space-y-4">
-        {sections.map((section) => (
+        {mappedSections.map((section) => (
           <SectionCard
             key={section.id}
             section={section}
@@ -245,6 +311,7 @@ const PageEditor = () => {
             onClearMedia={clearMedia}
             onSetMediaUrl={setMediaUrl}
             onSetGalleryUrl={setGalleryUrl}
+            onToggleHide={handleToggleHide}
           />
         ))}
       </div>
