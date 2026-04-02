@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GripVertical, Trash2, Upload, Image, Film, Plus, X, Link2, FileUp, EyeOff, Eye, FileVideo } from "lucide-react";
+import { GripVertical, Trash2, Upload, Image, Film, Plus, X, Link2, FileUp, EyeOff, Eye, FileVideo, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +18,8 @@ import {
 import { toast } from "sonner";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const CLOUDINARY_CLOUD_NAME = "drvsv82xa";
+const CLOUDINARY_UPLOAD_PRESET = "tmf_upload";
 
 type Section = {
   id: string;
