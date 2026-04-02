@@ -102,15 +102,6 @@ const PageEditor = () => {
 
   const handleDeleteSection = async (sectionId: string) => {
     try {
-      const section = sections.find(s => s.id === sectionId);
-      // Delete associated media from storage
-      if (section?.media_url) await deleteStorageFile(section.media_url);
-      if (section?.media_urls) {
-        for (const url of section.media_urls) {
-          if (url) await deleteStorageFile(url);
-        }
-      }
-
       const { error } = await supabase.from("page_sections").delete().eq("id", sectionId);
       if (error) throw error;
       setSections((prev) => prev.filter((s) => s.id !== sectionId));
