@@ -216,6 +216,35 @@ const PageEditor = () => {
     }
   };
 
+  const handleDuplicateSection = async (sourceSection: Section, newLabel: string) => {
+    try {
+      const sectionId = newLabel.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      const maxOrder = sections.length > 0 ? Math.max(...sections.map((s) => s.sort_order)) : 0;
+
+      const { data, error } = await supabase
+        .from("page_sections")
+        .insert({
+          page_id: pageId || "",
+          section_id: sectionId,
+          label: newLabel,
+          content_type: sourceSection.content_type,
+          text_value: sourceSection.text_value,
+          media_url: sourceSection.media_url,
+          media_urls: sourceSection.media_urls,
+          sort_order: maxOrder + 1,
+          is_default: false,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (data) setSections((prev) => [...prev, data as Section]);
+      toast.success(`"${newLabel}" duplicated from "${sourceSection.label}"`);
+    } catch {
+      toast.error("Failed to duplicate section");
+    }
+  };
+
   const addGalleryItem = (sectionId: string) => {
     setSections((prev) =>
       prev.map((s) => {
@@ -316,7 +345,7 @@ const PageEditor = () => {
         ))}
       </div>
 
-      <AddSectionDialog onAdd={handleAddSection} />
+      <AddSectionDialog onAdd={handleAddSection} onDuplicate={handleDuplicateSection} existingSections={mappedSections} />
     </div>
   );
 };
