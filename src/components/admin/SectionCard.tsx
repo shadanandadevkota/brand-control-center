@@ -278,7 +278,7 @@ const SectionCard = ({
                     size="icon"
                     variant="ghost"
                     className="text-foreground hover:text-primary h-7 w-7"
-                    onClick={() => triggerFileUpload(getAcceptType(), (file) => onFileUpload(section.id, file, i))}
+                    onClick={() => triggerFileUpload(getAcceptType(), (file) => handleUploadGallery(file, i))}
                   >
                     <Upload className="h-3 w-3" />
                   </Button>
