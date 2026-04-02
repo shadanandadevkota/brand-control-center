@@ -269,7 +269,8 @@ const PageEditor = () => {
             section={section}
             uploadingSection={uploadingSection}
             onTextUpdate={handleTextUpdate}
-            onFileUpload={handleFileUpload}
+            onMediaUrlUpdate={handleMediaUrlUpdate}
+            onGalleryUrlUpdate={handleGalleryUrlUpdate}
             onDelete={handleDeleteSection}
             onAddGalleryItem={addGalleryItem}
             onRemoveGalleryItem={removeGalleryItem}
