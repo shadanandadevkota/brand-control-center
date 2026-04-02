@@ -60,7 +60,8 @@ const SectionCard = ({
   section,
   uploadingSection,
   onTextUpdate,
-  onFileUpload,
+  onMediaUrlUpdate,
+  onGalleryUrlUpdate,
   onDelete,
   onAddGalleryItem,
   onRemoveGalleryItem,
@@ -73,16 +74,32 @@ const SectionCard = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [galleryLinkIndex, setGalleryLinkIndex] = useState<number | null>(null);
   const [galleryLinkUrl, setGalleryLinkUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   const isDefault = section.is_default === true;
   const isHidden = section.hidden === true;
 
-  const validateAndUpload = (file: File, callback: (file: File) => void) => {
+  const uploadToCloudinary = async (file: File): Promise<string | null> => {
     if (file.size > MAX_FILE_SIZE) {
       toast.error(`File too large. Maximum size is 50MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
-      return;
+      return null;
     }
-    callback(file);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const resourceType = file.type.startsWith("video") ? "video" : "image";
+    try {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      return data.secure_url as string;
+    } catch (err: any) {
+      toast.error(err.message || "Cloudinary upload failed");
+      return null;
+    }
   };
 
   const triggerFileUpload = (accept: string, callback: (file: File) => void) => {
@@ -91,9 +108,29 @@ const SectionCard = ({
     input.accept = accept;
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) validateAndUpload(file, callback);
+      if (file) callback(file);
     };
     input.click();
+  };
+
+  const handleUploadSingle = async (file: File) => {
+    setUploading(true);
+    const url = await uploadToCloudinary(file);
+    if (url) {
+      onMediaUrlUpdate(section.id, url);
+      toast.success("File uploaded to Cloudinary");
+    }
+    setUploading(false);
+  };
+
+  const handleUploadGallery = async (file: File, index: number) => {
+    setUploading(true);
+    const url = await uploadToCloudinary(file);
+    if (url) {
+      onGalleryUrlUpdate(section.id, index, url);
+      toast.success("File uploaded to Cloudinary");
+    }
+    setUploading(false);
   };
 
   const handleApplyLink = () => {
