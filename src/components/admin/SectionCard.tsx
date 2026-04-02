@@ -215,11 +215,11 @@ const SectionCard = ({
                 variant="outline"
                 size="sm"
                 className="border-border"
-                disabled={uploadingSection === section.id}
+                disabled={uploading}
                 onClick={() => triggerFileUpload(getAcceptType(), (file) => handleUploadSingle(file))}
               >
-                <Upload className="mr-2 h-3 w-3" />
-                {uploadingSection === section.id ? "Uploading..." : section.media_url ? "Replace" : "Upload"}
+                {uploading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Upload className="mr-2 h-3 w-3" />}
+                {uploading ? "Uploading..." : section.media_url ? "Replace" : "Upload"}
               </Button>
               {section.media_url && (
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onClearMedia(section.id)}>
