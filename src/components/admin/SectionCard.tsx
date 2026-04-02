@@ -216,7 +216,7 @@ const SectionCard = ({
                 size="sm"
                 className="border-border"
                 disabled={uploadingSection === section.id}
-                onClick={() => triggerFileUpload(getAcceptType(), (file) => onFileUpload(section.id, file))}
+                onClick={() => triggerFileUpload(getAcceptType(), (file) => handleUploadSingle(file))}
               >
                 <Upload className="mr-2 h-3 w-3" />
                 {uploadingSection === section.id ? "Uploading..." : section.media_url ? "Replace" : "Upload"}
