@@ -198,11 +198,7 @@ const PageEditor = () => {
     );
   };
 
-  const removeGalleryItem = async (sectionId: string, index: number) => {
-    const section = sections.find(s => s.id === sectionId);
-    const url = section?.media_urls?.[index];
-    if (url) await deleteStorageFile(url);
-
+  const removeGalleryItem = (sectionId: string, index: number) => {
     setSections((prev) =>
       prev.map((s) => {
         if (s.id === sectionId) {
@@ -215,9 +211,7 @@ const PageEditor = () => {
     );
   };
 
-  const clearMedia = async (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId);
-    if (section?.media_url) await deleteStorageFile(section.media_url);
+  const clearMedia = (sectionId: string) => {
     setSections((prev) =>
       prev.map((s) => (s.id === sectionId ? { ...s, media_url: null } : s))
     );
