@@ -345,7 +345,7 @@ const PageEditor = () => {
         ))}
       </div>
 
-      <AddSectionDialog onAdd={handleAddSection} />
+      <AddSectionDialog onAdd={handleAddSection} onDuplicate={handleDuplicateSection} existingSections={mappedSections} />
     </div>
   );
 };
