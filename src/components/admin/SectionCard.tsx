@@ -302,7 +302,7 @@ const SectionCard = ({
               {isDefault && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">Default</span>}
             </div>
             <div className="flex items-center gap-1">
-              {isDefault && onToggleHide && (
+              {onToggleHide && (
                 <Button
                   variant="ghost"
                   size="icon"
