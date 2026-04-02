@@ -39,7 +39,8 @@ type SectionCardProps = {
   section: Section;
   uploadingSection: string | null;
   onTextUpdate: (sectionId: string, value: string) => void;
-  onFileUpload: (sectionId: string, file: File, galleryIndex?: number) => void;
+  onMediaUrlUpdate: (sectionId: string, url: string) => void;
+  onGalleryUrlUpdate: (sectionId: string, index: number, url: string) => void;
   onDelete: (sectionId: string) => void;
   onAddGalleryItem: (sectionId: string) => void;
   onRemoveGalleryItem: (sectionId: string, index: number) => void;
