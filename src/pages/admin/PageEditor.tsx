@@ -81,72 +81,23 @@ const PageEditor = () => {
     }
   };
 
-  const deleteStorageFile = async (url: string) => {
-    try {
-      const mediaBase = "/storage/v1/object/public/media/";
-      const idx = url.indexOf(mediaBase);
-      if (idx === -1) return;
-      const filePath = url.substring(idx + mediaBase.length);
-      if (filePath) {
-        await supabase.storage.from("media").remove([filePath]);
-        // Also remove from media_files table
-        await supabase.from("media_files").delete().eq("file_path", filePath);
-      }
-    } catch {
-      // Silent fail - file may not exist in storage
-    }
+  const handleMediaUrlUpdate = (sectionId: string, url: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === sectionId ? { ...s, media_url: url } : s))
+    );
   };
 
-  const handleFileUpload = async (sectionId: string, file: File, galleryIndex?: number) => {
-    setUploadingSection(sectionId);
-    try {
-      const ext = file.name.split(".").pop();
-      const path = `${pageId}/${sectionId}/${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("media")
-        .upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(path);
-
-      const fileType = file.type.startsWith("video") ? "video" : "image";
-      await supabase.from("media_files").insert({
-        file_name: file.name,
-        file_path: path,
-        file_type: fileType,
-        file_size: file.size,
-        mime_type: file.type,
-        storage_url: publicUrl,
-      });
-
-      if (galleryIndex !== undefined) {
-        setSections((prev) =>
-          prev.map((s) => {
-            if (s.id === sectionId) {
-              const urls = [...(s.media_urls || [])];
-              // Delete old file from storage if replacing
-              if (urls[galleryIndex]) deleteStorageFile(urls[galleryIndex]);
-              urls[galleryIndex] = publicUrl;
-              return { ...s, media_urls: urls };
-            }
-            return s;
-          })
-        );
-      } else {
-        // Delete old file from storage if replacing
-        const oldSection = sections.find(s => s.id === sectionId);
-        if (oldSection?.media_url) deleteStorageFile(oldSection.media_url);
-        setSections((prev) =>
-          prev.map((s) => (s.id === sectionId ? { ...s, media_url: publicUrl } : s))
-        );
-      }
-      toast.success("File uploaded successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Upload failed");
-    } finally {
-      setUploadingSection(null);
-    }
+  const handleGalleryUrlUpdate = (sectionId: string, index: number, url: string) => {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id === sectionId) {
+          const urls = [...(s.media_urls || [])];
+          urls[index] = url;
+          return { ...s, media_urls: urls };
+        }
+        return s;
+      })
+    );
   };
 
   const handleDeleteSection = async (sectionId: string) => {
