@@ -4,7 +4,7 @@ import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import SectionCard from "@/components/admin/SectionCard";
+import SectionCard, { type SectionMetadata } from "@/components/admin/SectionCard";
 import AddSectionDialog from "@/components/admin/AddSectionDialog";
 
 type Section = {
@@ -20,14 +20,15 @@ type Section = {
   subtitle: string | null;
   is_default?: boolean;
   hidden?: boolean;
+  metadata?: SectionMetadata;
 };
 
 const pageTitles: Record<string, { title: string; description: string }> = {
   homepage: { title: "Homepage", description: "Manage homepage content and media" },
-  about: { title: "About Page", description: "Edit about page content" },
-  "ad-commercials": { title: "Ad Commercials", description: "Manage ad commercial projects" },
+  about: { title: "About Page", description: "Edit about page content and FAQ" },
+  "ad-commercials": { title: "Ad Commercials", description: "Manage ad commercial projects with crew details" },
   "fashion-editorial": { title: "Fashion Editorial", description: "Manage fashion editorial content" },
-  "media-production": { title: "Media Production", description: "Manage media production page" },
+  "media-production": { title: "Media Production", description: "Manage media production page with crew details" },
   "wedding-landing": { title: "Wedding Landing Page", description: "Manage wedding landing page" },
   "wedding-photos": { title: "Wedding Photos", description: "Manage wedding photos content" },
   "wedding-films": { title: "Wedding Films", description: "Manage wedding films content" },
@@ -62,6 +63,12 @@ const PageEditor = () => {
     );
   };
 
+  const handleMetadataUpdate = (sectionId: string, metadata: SectionMetadata) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === sectionId ? { ...s, metadata } : s))
+    );
+  };
+
   const handleSave = async () => {
     try {
       for (const section of sections) {
@@ -71,6 +78,7 @@ const PageEditor = () => {
             text_value: section.text_value,
             media_url: section.media_url,
             media_urls: section.media_urls,
+            metadata: (section.metadata || {}) as any,
           })
           .eq("id", section.id);
         if (error) throw error;
@@ -113,10 +121,6 @@ const PageEditor = () => {
 
   const handleToggleHide = async (sectionId: string, hidden: boolean) => {
     try {
-      // Use text_value prefix to mark hidden state (workaround without schema change)
-      // Actually we'll save it via a subtitle field hack or separate approach
-      // Better: update the section's sort_order to negative to "hide"
-      // Simplest: store hidden state locally and persist via a convention
       const { error } = await supabase
         .from("page_sections")
         .update({ subtitle: hidden ? "__hidden__" : null })
@@ -146,7 +150,8 @@ const PageEditor = () => {
           sort_order: maxOrder + 1,
           media_urls: contentType === "gallery" ? [] : null,
           is_default: false,
-        })
+          metadata: contentType === "faq" ? { faq_items: [] } : {},
+        } as any)
         .select()
         .single();
 
@@ -175,7 +180,8 @@ const PageEditor = () => {
           media_urls: sourceSection.media_urls,
           sort_order: maxOrder + 1,
           is_default: false,
-        })
+          metadata: (sourceSection.metadata || {}) as any,
+        } as any)
         .select()
         .single();
 
@@ -204,7 +210,14 @@ const PageEditor = () => {
         if (s.id === sectionId) {
           const urls = [...(s.media_urls || [])];
           urls.splice(index, 1);
-          return { ...s, media_urls: urls };
+          // Also remove gallery title at same index
+          const meta = { ...(s.metadata || {}) };
+          if (meta.gallery_titles) {
+            const titles = [...meta.gallery_titles];
+            titles.splice(index, 1);
+            meta.gallery_titles = titles;
+          }
+          return { ...s, media_urls: urls, metadata: meta };
         }
         return s;
       })
@@ -236,7 +249,6 @@ const PageEditor = () => {
     );
   };
 
-  // Map subtitle "__hidden__" to hidden flag
   const mappedSections = sections.map(s => ({
     ...s,
     hidden: s.subtitle === "__hidden__",
@@ -278,6 +290,7 @@ const PageEditor = () => {
             onSetMediaUrl={setMediaUrl}
             onSetGalleryUrl={setGalleryUrl}
             onToggleHide={handleToggleHide}
+            onMetadataUpdate={handleMetadataUpdate}
           />
         ))}
       </div>

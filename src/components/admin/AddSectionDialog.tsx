@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Image, Film, Type, Link, Images, FileVideo, Copy } from "lucide-react";
+import { Plus, Image, Film, Type, Link, Images, FileVideo, Copy, HelpCircle, AlignLeft } from "lucide-react";
 
 type Section = {
   id: string;
@@ -46,8 +46,10 @@ const contentTypes = [
   { value: "video", label: "Video", icon: Film, description: "Single video upload" },
   { value: "media", label: "Photo / Video", icon: FileVideo, description: "Single photo or video (up to 50MB)" },
   { value: "gallery", label: "Media Gallery", icon: Images, description: "Multiple photos & videos (up to 50MB each)" },
-  { value: "text", label: "Text", icon: Type, description: "Text content" },
+  { value: "text", label: "Text", icon: Type, description: "Single line text content" },
+  { value: "textarea", label: "Long Text", icon: AlignLeft, description: "Multi-line text / paragraph" },
   { value: "vimeo_url", label: "Vimeo URL", icon: Link, description: "Vimeo video link" },
+  { value: "faq", label: "FAQ", icon: HelpCircle, description: "Question & answer pairs" },
 ];
 
 const AddSectionDialog = ({ onAdd, onDuplicate, existingSections = [] }: AddSectionDialogProps) => {
@@ -117,7 +119,7 @@ const AddSectionDialog = ({ onAdd, onDuplicate, existingSections = [] }: AddSect
               <Input
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                placeholder="e.g. Hero Photo, Behind the Scenes..."
+                placeholder="e.g. Hero Photo, Behind the Scenes, FAQ..."
                 className="bg-muted border-border text-foreground"
               />
             </div>
