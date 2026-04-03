@@ -110,6 +110,7 @@ export type Database = {
           label: string
           media_url: string | null
           media_urls: string[] | null
+          metadata: Json | null
           page_id: string
           section_id: string
           sort_order: number
@@ -125,6 +126,7 @@ export type Database = {
           label: string
           media_url?: string | null
           media_urls?: string[] | null
+          metadata?: Json | null
           page_id: string
           section_id: string
           sort_order?: number
@@ -140,6 +142,7 @@ export type Database = {
           label?: string
           media_url?: string | null
           media_urls?: string[] | null
+          metadata?: Json | null
           page_id?: string
           section_id?: string
           sort_order?: number
