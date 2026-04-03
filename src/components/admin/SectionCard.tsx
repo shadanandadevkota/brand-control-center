@@ -146,8 +146,6 @@ const SectionCard = ({
       };
       xhr.send(formData);
     });
-      return null;
-    }
   };
 
   const triggerFileUpload = (accept: string, callback: (file: File) => void) => {
