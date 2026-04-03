@@ -97,6 +97,7 @@ const SectionCard = ({
   const [galleryLinkIndex, setGalleryLinkIndex] = useState<number | null>(null);
   const [galleryLinkUrl, setGalleryLinkUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
   const isDefault = section.is_default === true;
@@ -122,18 +123,29 @@ const SectionCard = ({
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
     const resourceType = file.type.startsWith("video") ? "video" : "image";
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-      return data.secure_url as string;
-    } catch (err: any) {
-      toast.error(err.message || "Cloudinary upload failed");
-      return null;
-    }
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data.secure_url as string);
+        } else {
+          toast.error("Upload failed");
+          resolve(null);
+        }
+      };
+      xhr.onerror = () => {
+        toast.error("Cloudinary upload failed");
+        resolve(null);
+      };
+      xhr.send(formData);
+    });
   };
 
   const triggerFileUpload = (accept: string, callback: (file: File) => void) => {
@@ -149,22 +161,26 @@ const SectionCard = ({
 
   const handleUploadSingle = async (file: File) => {
     setUploading(true);
+    setUploadProgress(0);
     const url = await uploadToCloudinary(file);
     if (url) {
       onMediaUrlUpdate(section.id, url);
       toast.success("File uploaded to Cloudinary");
     }
     setUploading(false);
+    setUploadProgress(0);
   };
 
   const handleUploadGallery = async (file: File, index: number) => {
     setUploading(true);
+    setUploadProgress(0);
     const url = await uploadToCloudinary(file);
     if (url) {
       onGalleryUrlUpdate(section.id, index, url);
       toast.success("File uploaded to Cloudinary");
     }
     setUploading(false);
+    setUploadProgress(0);
   };
 
   const handleApplyLink = () => {
@@ -346,21 +362,34 @@ const SectionCard = ({
             {section.media_url ? section.media_url.split("/").pop() : "No file selected"}
           </p>
           {inputMode === "file" ? (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-border"
-                disabled={uploading}
-                onClick={() => triggerFileUpload(getAcceptType(), (file) => handleUploadSingle(file))}
-              >
-                {uploading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Upload className="mr-2 h-3 w-3" />}
-                {uploading ? "Uploading..." : section.media_url ? "Replace" : "Upload"}
-              </Button>
-              {section.media_url && (
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onClearMedia(section.id)}>
-                  <X className="mr-1 h-3 w-3" /> Remove
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-border"
+                  disabled={uploading}
+                  onClick={() => triggerFileUpload(getAcceptType(), (file) => handleUploadSingle(file))}
+                >
+                  {uploading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Upload className="mr-2 h-3 w-3" />}
+                  {uploading ? "Uploading..." : section.media_url ? "Replace" : "Upload"}
                 </Button>
+                {section.media_url && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onClearMedia(section.id)}>
+                    <X className="mr-1 h-3 w-3" /> Remove
+                  </Button>
+                )}
+              </div>
+              {uploading && (
+                <div className="space-y-1">
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{uploadProgress}% uploaded</p>
+                </div>
               )}
             </div>
           ) : (
@@ -469,6 +498,17 @@ const SectionCard = ({
           <span className="text-[10px] mt-1">Add</span>
         </button>
       </div>
+      {uploading && (
+        <div className="space-y-1">
+          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground">{uploadProgress}% uploaded</p>
+        </div>
+      )}
       {showCrewFields && renderCrewDetails()}
     </div>
   );
