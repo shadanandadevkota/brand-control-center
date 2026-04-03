@@ -97,6 +97,7 @@ const SectionCard = ({
   const [galleryLinkIndex, setGalleryLinkIndex] = useState<number | null>(null);
   const [galleryLinkUrl, setGalleryLinkUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
 
   const isDefault = section.is_default === true;
