@@ -379,6 +379,17 @@ const SectionCard = ({
                 </Button>
               )}
             </div>
+          {uploading && (
+            <div className="space-y-1">
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">{uploadProgress}% uploaded</p>
+            </div>
+          )
           ) : (
             <div className="flex gap-2">
               <Input
