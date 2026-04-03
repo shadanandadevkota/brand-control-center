@@ -362,34 +362,36 @@ const SectionCard = ({
             {section.media_url ? section.media_url.split("/").pop() : "No file selected"}
           </p>
           {inputMode === "file" ? (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-border"
-                disabled={uploading}
-                onClick={() => triggerFileUpload(getAcceptType(), (file) => handleUploadSingle(file))}
-              >
-                {uploading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Upload className="mr-2 h-3 w-3" />}
-                {uploading ? "Uploading..." : section.media_url ? "Replace" : "Upload"}
-              </Button>
-              {section.media_url && (
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onClearMedia(section.id)}>
-                  <X className="mr-1 h-3 w-3" /> Remove
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-border"
+                  disabled={uploading}
+                  onClick={() => triggerFileUpload(getAcceptType(), (file) => handleUploadSingle(file))}
+                >
+                  {uploading ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Upload className="mr-2 h-3 w-3" />}
+                  {uploading ? "Uploading..." : section.media_url ? "Replace" : "Upload"}
                 </Button>
+                {section.media_url && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onClearMedia(section.id)}>
+                    <X className="mr-1 h-3 w-3" /> Remove
+                  </Button>
+                )}
+              </div>
+              {uploading && (
+                <div className="space-y-1">
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{uploadProgress}% uploaded</p>
+                </div>
               )}
             </div>
-          {uploading && (
-            <div className="space-y-1">
-              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground">{uploadProgress}% uploaded</p>
-            </div>
-          )
           ) : (
             <div className="flex gap-2">
               <Input
