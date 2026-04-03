@@ -123,16 +123,29 @@ const SectionCard = ({
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
     const resourceType = file.type.startsWith("video") ? "video" : "image";
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-      return data.secure_url as string;
-    } catch (err: any) {
-      toast.error(err.message || "Cloudinary upload failed");
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data.secure_url as string);
+        } else {
+          toast.error("Upload failed");
+          resolve(null);
+        }
+      };
+      xhr.onerror = () => {
+        toast.error("Cloudinary upload failed");
+        resolve(null);
+      };
+      xhr.send(formData);
+    });
       return null;
     }
   };
