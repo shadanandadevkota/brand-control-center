@@ -161,22 +161,26 @@ const SectionCard = ({
 
   const handleUploadSingle = async (file: File) => {
     setUploading(true);
+    setUploadProgress(0);
     const url = await uploadToCloudinary(file);
     if (url) {
       onMediaUrlUpdate(section.id, url);
       toast.success("File uploaded to Cloudinary");
     }
     setUploading(false);
+    setUploadProgress(0);
   };
 
   const handleUploadGallery = async (file: File, index: number) => {
     setUploading(true);
+    setUploadProgress(0);
     const url = await uploadToCloudinary(file);
     if (url) {
       onGalleryUrlUpdate(section.id, index, url);
       toast.success("File uploaded to Cloudinary");
     }
     setUploading(false);
+    setUploadProgress(0);
   };
 
   const handleApplyLink = () => {
