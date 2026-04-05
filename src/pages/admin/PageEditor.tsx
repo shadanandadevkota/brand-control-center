@@ -39,7 +39,6 @@ const PageEditor = () => {
   const { pageId } = useParams<{ pageId: string }>();
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingSection, setUploadingSection] = useState<string | null>(null);
   const meta = pageTitles[pageId || ""] || { title: "Page", description: "" };
 
   useEffect(() => {
@@ -57,15 +56,9 @@ const PageEditor = () => {
     setLoading(false);
   };
 
-  const handleTextUpdate = (sectionId: string, value: string) => {
+  const handleUpdate = (sectionId: string, updates: Partial<Section>) => {
     setSections((prev) =>
-      prev.map((s) => (s.id === sectionId ? { ...s, text_value: value } : s))
-    );
-  };
-
-  const handleMetadataUpdate = (sectionId: string, metadata: SectionMetadata) => {
-    setSections((prev) =>
-      prev.map((s) => (s.id === sectionId ? { ...s, metadata } : s))
+      prev.map((s) => (s.id === sectionId ? { ...s, ...updates } : s))
     );
   };
 
@@ -75,9 +68,12 @@ const PageEditor = () => {
         const { error } = await supabase
           .from("page_sections")
           .update({
+            label: section.label,
             text_value: section.text_value,
+            subtitle: section.subtitle,
             media_url: section.media_url,
             media_urls: section.media_urls,
+            sort_order: section.sort_order,
             metadata: (section.metadata || {}) as any,
           })
           .eq("id", section.id);
@@ -87,25 +83,6 @@ const PageEditor = () => {
     } catch {
       toast.error("Failed to save changes");
     }
-  };
-
-  const handleMediaUrlUpdate = (sectionId: string, url: string) => {
-    setSections((prev) =>
-      prev.map((s) => (s.id === sectionId ? { ...s, media_url: url } : s))
-    );
-  };
-
-  const handleGalleryUrlUpdate = (sectionId: string, index: number, url: string) => {
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.id === sectionId) {
-          const urls = [...(s.media_urls || [])];
-          urls[index] = url;
-          return { ...s, media_urls: urls };
-        }
-        return s;
-      })
-    );
   };
 
   const handleDeleteSection = async (sectionId: string) => {
@@ -127,7 +104,7 @@ const PageEditor = () => {
         .eq("id", sectionId);
       if (error) throw error;
       setSections((prev) =>
-        prev.map((s) => (s.id === sectionId ? { ...s, hidden } : s))
+        prev.map((s) => (s.id === sectionId ? { ...s, hidden, subtitle: hidden ? "__hidden__" : null } : s))
       );
       toast.success(hidden ? "Section hidden" : "Section visible");
     } catch {
@@ -193,62 +170,6 @@ const PageEditor = () => {
     }
   };
 
-  const addGalleryItem = (sectionId: string) => {
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.id === sectionId) {
-          return { ...s, media_urls: [...(s.media_urls || []), ""] };
-        }
-        return s;
-      })
-    );
-  };
-
-  const removeGalleryItem = (sectionId: string, index: number) => {
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.id === sectionId) {
-          const urls = [...(s.media_urls || [])];
-          urls.splice(index, 1);
-          // Also remove gallery title at same index
-          const meta = { ...(s.metadata || {}) };
-          if (meta.gallery_titles) {
-            const titles = [...meta.gallery_titles];
-            titles.splice(index, 1);
-            meta.gallery_titles = titles;
-          }
-          return { ...s, media_urls: urls, metadata: meta };
-        }
-        return s;
-      })
-    );
-  };
-
-  const clearMedia = (sectionId: string) => {
-    setSections((prev) =>
-      prev.map((s) => (s.id === sectionId ? { ...s, media_url: null } : s))
-    );
-  };
-
-  const setMediaUrl = (sectionId: string, url: string) => {
-    setSections((prev) =>
-      prev.map((s) => (s.id === sectionId ? { ...s, media_url: url } : s))
-    );
-  };
-
-  const setGalleryUrl = (sectionId: string, index: number, url: string) => {
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.id === sectionId) {
-          const urls = [...(s.media_urls || [])];
-          urls[index] = url;
-          return { ...s, media_urls: urls };
-        }
-        return s;
-      })
-    );
-  };
-
   const mappedSections = sections.map(s => ({
     ...s,
     hidden: s.subtitle === "__hidden__",
@@ -279,18 +200,9 @@ const PageEditor = () => {
           <SectionCard
             key={section.id}
             section={section}
-            uploadingSection={uploadingSection}
-            onTextUpdate={handleTextUpdate}
-            onMediaUrlUpdate={handleMediaUrlUpdate}
-            onGalleryUrlUpdate={handleGalleryUrlUpdate}
+            onUpdate={(updates) => handleUpdate(section.id, updates)}
             onDelete={handleDeleteSection}
-            onAddGalleryItem={addGalleryItem}
-            onRemoveGalleryItem={removeGalleryItem}
-            onClearMedia={clearMedia}
-            onSetMediaUrl={setMediaUrl}
-            onSetGalleryUrl={setGalleryUrl}
             onToggleHide={handleToggleHide}
-            onMetadataUpdate={handleMetadataUpdate}
           />
         ))}
       </div>
