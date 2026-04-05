@@ -312,6 +312,7 @@ export type Database = {
           date_text: string | null
           description: string
           duration: string | null
+          gallery_images: string[] | null
           has_blog: boolean | null
           id: string
           images: string[] | null
@@ -323,6 +324,7 @@ export type Database = {
           thumbnail: string | null
           updated_at: string
           video_url: string | null
+          vimeo_url: string | null
         }
         Insert: {
           behind_the_scenes?: string | null
@@ -333,6 +335,7 @@ export type Database = {
           date_text?: string | null
           description?: string
           duration?: string | null
+          gallery_images?: string[] | null
           has_blog?: boolean | null
           id?: string
           images?: string[] | null
@@ -344,6 +347,7 @@ export type Database = {
           thumbnail?: string | null
           updated_at?: string
           video_url?: string | null
+          vimeo_url?: string | null
         }
         Update: {
           behind_the_scenes?: string | null
@@ -354,6 +358,7 @@ export type Database = {
           date_text?: string | null
           description?: string
           duration?: string | null
+          gallery_images?: string[] | null
           has_blog?: boolean | null
           id?: string
           images?: string[] | null
@@ -365,6 +370,7 @@ export type Database = {
           thumbnail?: string | null
           updated_at?: string
           video_url?: string | null
+          vimeo_url?: string | null
         }
         Relationships: []
       }
